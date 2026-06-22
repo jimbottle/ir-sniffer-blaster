@@ -1,0 +1,43 @@
+# Hardware
+
+All hardware is **already purchased**. This page is reference for assembly and for
+anyone considering substitutions.
+
+## Bill of materials (as purchased, all Adafruit)
+
+| Part #  | Item                                  | Role                                                              |
+|---------|---------------------------------------|------------------------------------------------------------------|
+| 5990    | IR Remote Transceiver                 | 940 nm emitter + 38 kHz receiver on one board (the sniffer/blaster)|
+| 5900    | ESP32 Feather V2 (with headers)       | The MCU — 8MB flash / 2MB PSRAM, ESP32-WROOM                      |
+| 4298    | Raspberry Pi 5.1V 3A USB-C PSU        | **Power only** (captive cable) — cannot flash the board          |
+| 4045    | JST PH 2mm 4-pin socket → color cable | Mates the 5990; tinned wire ends push into the breadboard         |
+| 4539    | Half-size breadboard (400 tie points) | Solderless mounting + interconnect                               |
+
+### Not in the parts list — required for first flash
+
+- **A USB-C DATA cable** (PC → Feather). The 4298 PSU is power-only and **cannot
+  flash** the board. After the initial flash, all updates go over WiFi (OTA) and
+  the 4298 just powers it.
+
+## Why these parts (context for substitutions)
+
+- **ESP32-WROOM (classic dual-core), not S2/S3** — best-supported silicon for
+  ESPHome's `remote_receiver` / `remote_transmitter` components. ESPHome board key:
+  `featheresp32-v2`.
+- **5990 has an onboard N-channel FET driver**, so a 3.3V GPIO toggles the emitter
+  while the LEDs themselves pull from 5V for 10+ m range. No external transistor
+  needed.
+- **PCB-antenna board is fine here** — an IR blaster sits in the open with line of
+  sight to the gear, so an external antenna earns nothing in this placement.
+
+## The 5990 transceiver
+
+- Combined **emitter (940 nm) + receiver (38 kHz demodulator)** on one board.
+- Output is **buffered/demodulated** → the ESPHome receiver uses `inverted: false`
+  (see [troubleshooting](troubleshooting.md)).
+- Has **one vertical and one horizontal emitter LED** — reorient the board if range
+  to a specific device is marginal, rather than adding a second blaster.
+- Accepts **3–5V logic**: drive the signal lines from 3.3V GPIOs, power the emitter
+  LEDs from 5V for full range.
+- **Not I2C** despite the 4045 cable's "I2C STEMMA" label — do not use the STEMMA QT
+  port.

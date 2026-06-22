@@ -1,3 +1,44 @@
+# Project orientation (IR Sniffer / Blaster)
+
+Context for anyone (human or AI) picking up this repo. For the full docs see
+[`README.md`](README.md) and [`docs/`](docs/).
+
+## What this is
+
+A single-room IR sniffer/blaster: an **ESP32 Feather V2 (Adafruit 5900)** + **Adafruit
+5990 IR transceiver**, running **ESPHome**. It captures IR remote codes and replays
+them over the Home Assistant API, MQTT, REST, or a built-in web server.
+
+## Current state
+
+**Scaffolding only — nothing has been flashed.** Hardware is purchased. The repo is
+documented and ready for the build. The next real step is the first USB flash
+([`docs/flashing.md`](docs/flashing.md)). Do **not** compile, flash, or run the board
+unless explicitly asked — this repo is in documentation/prep mode.
+
+## Source of truth
+
+- **`ir-blaster-livingroom.yaml`** is the authoritative firmware spec — the single
+  source of truth for pins, protocols, and services.
+- The brief's facts are distilled into `docs/` and `README.md`.
+
+## Non-negotiable facts (don't "fix" these)
+
+- Board key is **`featheresp32-v2`** (ESP32-WROOM). Not S2/S3.
+- **RX = GPIO14**, **TX = GPIO27**. These must match `docs/wiring.md`.
+- **`remote_receiver.inverted: false`** is correct for the 5990's buffered output.
+  Setting `true` is only for a bare TSOP38238 and will break decoding.
+- The included PSU (4298) is **power-only**; the first flash needs a separate USB-C
+  **data** cable. Subsequent flashes are OTA.
+- The 5990 is **not I2C** — ignore the cable's "STEMMA" label; wire to GPIOs.
+- **`secrets.yaml` is git-ignored and must never be committed.** Template:
+  `secrets.yaml.example`; generate the API key with `openssl rand -base64 32`.
+
+When the build begins, drive it against [`docs/validation.md`](docs/validation.md) and
+record captured codes in [`captured-codes/`](captured-codes/).
+
+---
+
 # Agent Instructions
 
 This project uses **bd** (beads) for issue tracking. Run `bd prime` for full workflow context.

@@ -1,0 +1,7 @@
+# Standalone (non–Home Assistant) toolchain for this project.
+# Install into a virtualenv:  python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+#
+# ESPHome is the only hard dependency for compiling and flashing the firmware.
+# Pin a known-good version here once the build is confirmed working; left
+# unpinned for the initial setup so you grab the current release.
+esphome
