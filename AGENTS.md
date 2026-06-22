@@ -21,6 +21,12 @@ unless explicitly asked — this repo is in documentation/prep mode.
 - **`ir-blaster-livingroom.yaml`** is the authoritative firmware spec — the single
   source of truth for pins, protocols, and services.
 - The brief's facts are distilled into `docs/` and `README.md`.
+- **Intentional deviations from the original brief** (code-review driven, all
+  reversible): the API block uses current `actions:`/`action:` syntax instead of
+  the deprecated `services:`/`service:`; a fallback `ap:` + `captive_portal:` was
+  added for WiFi recovery; and the example `transmit_*` buttons ship **commented
+  out** so the first flash exposes no pressable buttons firing placeholder codes.
+  Uncomment the buttons after capturing real codes.
 
 ## Non-negotiable facts (don't "fix" these)
 

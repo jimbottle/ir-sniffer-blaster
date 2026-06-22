@@ -17,14 +17,26 @@ wifi:
     static_ip: 192.168.0.150
     gateway: 192.168.0.1
     subnet: 255.255.255.0
+  # Recovery fallback: if the WiFi join fails (wrong creds, or the static IP
+  # above collides on the LAN), the board hosts its own AP so it stays
+  # reachable for reconfig without dragging out a USB cable.
+  ap:
+    ssid: "IR-Blaster Fallback"
+    password: !secret ap_password
+
+# Serves a WiFi-setup page while the fallback AP is active.
+captive_portal:
 
 api:
   encryption:
     key: !secret api_encryption_key
-  # Generic programmatic transmit: call this HA service with a raw timing array
+  # Generic programmatic transmit: call this HA action with a raw timing array
   # (microseconds, +mark / -space) to replay anything captured.
-  services:
-    - service: send_raw_ir
+  # NOTE: current ESPHome uses `actions:`/`action:`. Older installs (pre-rename)
+  # used `services:`/`service:` — swap back if your ESPHome errors on `actions`.
+  # The generated HA service id is unchanged: esphome.ir_blaster_livingroom_send_raw_ir
+  actions:
+    - action: send_raw_ir
       variables:
         raw: int[]
       then:
@@ -54,18 +66,23 @@ remote_transmitter:
   pin: GPIO27
   carrier_duty_percent: 50%
 
-# Example replay buttons — replace with real captured values.
-button:
-  - platform: template
-    name: "TV Power"
-    on_press:
-      - remote_transmitter.transmit_nec:    # use the protocol the log reports
-          address: 0x20DF
-          command: 0x10EF
-
-  - platform: template
-    name: "TV Volume Up (raw example)"
-    on_press:
-      - remote_transmitter.transmit_raw:
-          carrier_frequency: 38kHz
-          code: [9000, -4500, 560, -560, 560, -1690, 560, -560]   # truncated sample
+# Example replay buttons — TEMPLATE ONLY, intentionally commented out.
+# These placeholder codes are NOT real captures; leaving them live would expose
+# pressable HA/web buttons that fire arbitrary IR at whatever is in line of sight.
+# After capturing real codes (see docs/capture-replay.md), uncomment and replace
+# the values, then re-flash over OTA.
+#
+# button:
+#   - platform: template
+#     name: "TV Power"
+#     on_press:
+#       - remote_transmitter.transmit_nec:    # use the protocol the log reports
+#           address: 0x20DF
+#           command: 0x10EF
+#
+#   - platform: template
+#     name: "TV Volume Up (raw example)"
+#     on_press:
+#       - remote_transmitter.transmit_raw:
+#           carrier_frequency: 38kHz
+#           code: [9000, -4500, 560, -560, 560, -1690, 560, -560]   # truncated sample

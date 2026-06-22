@@ -34,12 +34,14 @@
 
 ## ESPHome version note
 
-This config uses the `api:` → `services:` block. **Recent ESPHome releases renamed
-this to `api:` → `actions:`** (the old `services:` may warn or error depending on
-version). If a build fails on that block, rename `services:` to `actions:` and
-`service:` to `action:` — the structure is otherwise identical. Verify against the
-[ESPHome native API docs](https://esphome.io/components/api.html) for your installed
-version.
+This config ships the **current** `api:` → `actions:` / `action:` syntax, so a
+fresh `pip install esphome` compiles on the first try. **Older ESPHome installs
+(pre-rename) used `api:` → `services:` / `service:`.** If a build fails on that
+block complaining about `actions`, rename `actions:` back to `services:` and
+`action:` to `service:` — the structure is otherwise identical, and the generated
+HA service id (`esphome.ir_blaster_livingroom_send_raw_ir`) is the same either way.
+Verify against the [ESPHome native API docs](https://esphome.io/components/api.html)
+for your installed version.
 
 ## First-boot checklist if nothing works
 
