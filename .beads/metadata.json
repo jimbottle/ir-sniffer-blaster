@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "ir_sniffer_blaster",
+  "project_id": "4cf71249-f754-4b38-aed0-8d36f8ebfae5"
+}
