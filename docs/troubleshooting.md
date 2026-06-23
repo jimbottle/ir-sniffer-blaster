@@ -29,15 +29,20 @@
 
 - **Static IP.** The config pins `192.168.0.150`. Change it to fit the LAN, or
   delete the `manual_ip:` block to use DHCP.
+- **Locked out? Use the fallback AP.** If WiFi credentials are wrong or the static
+  IP collides, the board hosts its own access point named **`IR-Blaster Fallback`**
+  (password = `ap_password` from `secrets.yaml`). Connect to it and browse to the
+  captive portal to fix the network config — no USB cable needed.
 - If the device never appears in HA but the web server responds, check the
   `api_encryption_key` matches what HA has stored.
 
 ## ESPHome version note
 
-This config ships the **current** `api:` → `actions:` / `action:` syntax, so a
-fresh `pip install esphome` compiles on the first try. **Older ESPHome installs
-(pre-rename) used `api:` → `services:` / `service:`.** If a build fails on that
-block complaining about `actions`, rename `actions:` back to `services:` and
+`requirements.txt` pins **ESPHome 2026.6.2**, the version this config was validated
+against (`esphome config` passes). It ships the **current** `api:` → `actions:` /
+`action:` syntax. **Older ESPHome installs (pre-rename) used `api:` → `services:` /
+`service:`.** If you unpin and a build fails on that block complaining about
+`actions`, rename `actions:` back to `services:` and
 `action:` to `service:` — the structure is otherwise identical, and the generated
 HA service id (`esphome.ir_blaster_livingroom_send_raw_ir`) is the same either way.
 Verify against the [ESPHome native API docs](https://esphome.io/components/api.html)

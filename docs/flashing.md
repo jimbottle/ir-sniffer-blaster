@@ -10,7 +10,8 @@ are two ways to run ESPHome:
 ## Prerequisites
 
 - Hardware wired per [`docs/wiring.md`](wiring.md).
-- `secrets.yaml` created from the template and filled in:
+- `secrets.yaml` created from the template and filled in — all five keys:
+  `wifi_ssid`, `wifi_password`, `api_encryption_key`, `ota_password`, `ap_password`:
   ```bash
   cp secrets.yaml.example secrets.yaml
   # edit it; generate the API key with:
@@ -28,7 +29,8 @@ are two ways to run ESPHome:
    ```bash
    esphome run ir-blaster-livingroom.yaml
    ```
-   Pick the serial port when prompted.
+   Pick the serial port when prompted. On macOS it appears as
+   `/dev/cu.usbserial-*` or `/dev/cu.usbmodem*` (not `/dev/ttyUSB*` — that's Linux).
    *(HA add-on: install via "Plug into this computer".)*
 4. Confirm it joins WiFi and appears in Home Assistant / responds at
    `http://192.168.0.150/`.
@@ -53,3 +55,8 @@ docker run --rm -v "${PWD}":/config -it ghcr.io/esphome/esphome run ir-blaster-l
 
 For USB flashing inside Docker you must pass the serial device through
 (`--device=/dev/ttyUSB0` or similar); OTA flashes need no device passthrough.
+
+> **macOS note:** Docker Desktop runs in a VM and generally **cannot** pass
+> through a USB serial device, so the Docker route won't work for the *first*
+> (USB) flash on a Mac — use the native CLI (`esphome run`) for that. Docker is
+> fine for later **OTA** flashes, which go over the network.

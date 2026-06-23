@@ -5,9 +5,9 @@ A programmable, networked **infrared blaster for a single room**. It captures
 demand. Built on an **ESP32 Feather V2 running ESPHome**, controllable over the
 Home Assistant API, MQTT, REST, or a built-in web server.
 
-> **Status: scaffolding / not yet built.** This repo is set up and documented so
-> the firmware can be compiled, flashed, and validated. No board has been flashed
-> yet. Start with [`docs/flashing.md`](docs/flashing.md).
+> **Status: config validated, not yet flashed.** `esphome config` passes against
+> ESPHome 2026.6.2 (pinned in `requirements.txt`); no board has been flashed yet —
+> that waits on the hardware. Start with [`docs/flashing.md`](docs/flashing.md).
 
 ## What it does
 
