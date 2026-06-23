@@ -30,7 +30,9 @@ unless explicitly asked — this repo is in documentation/prep mode.
 
 ## Non-negotiable facts (don't "fix" these)
 
-- Board key is **`featheresp32-v2`** (ESP32-WROOM). Not S2/S3.
+- ESPHome board key is **`adafruit_feather_esp32_v2`** (ESP32-WROOM, variant esp32).
+  Not S2/S3. (The brief's `featheresp32-v2` is outdated and fails validation on
+  current ESPHome.) Arduino-cli FQBN equivalent: `esp32:esp32:adafruit_feather_esp32_v2`.
 - **RX = GPIO14**, **TX = GPIO27**. These must match `docs/wiring.md`.
 - **`remote_receiver.inverted: false`** is correct for the 5990's buffered output.
   Setting `true` is only for a bare TSOP38238 and will break decoding.

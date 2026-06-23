@@ -23,7 +23,8 @@ anyone considering substitutions.
 
 - **ESP32-WROOM (classic dual-core), not S2/S3** — best-supported silicon for
   ESPHome's `remote_receiver` / `remote_transmitter` components. ESPHome board key:
-  `featheresp32-v2`.
+  `adafruit_feather_esp32_v2` (variant esp32). Arduino-cli FQBN equivalent:
+  `esp32:esp32:adafruit_feather_esp32_v2`.
 - **5990 has an onboard N-channel FET driver**, so a 3.3V GPIO toggles the emitter
   while the LEDs themselves pull from 5V for 10+ m range. No external transistor
   needed.

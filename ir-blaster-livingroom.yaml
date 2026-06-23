@@ -3,7 +3,7 @@ esphome:
   friendly_name: IR Blaster (Living Room)
 
 esp32:
-  board: featheresp32-v2
+  board: adafruit_feather_esp32_v2   # ESPHome key for the Adafruit Feather ESP32 V2 (variant esp32)
   framework:
     type: arduino
 
