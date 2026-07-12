@@ -1,0 +1,37 @@
+# Minimal diagnostic: proves the 5990 IR RECEIVER is wired correctly.
+#
+# Deliberately has NO wifi / api / ota / web_server — so it needs no secrets.yaml,
+# no network, no Home Assistant, and no Arduino toolchain. Everything reports over
+# the USB serial console.
+#
+# Usage:
+#   esphome run ir-wiring-test.yaml     # flash over USB, then it streams logs
+#   (already flashed?)  esphome logs ir-wiring-test.yaml
+#
+# Then point any remote at the 5990 and press buttons.
+#   - Decoded line and/or raw timing array  -> RX wiring is GOOD (green->GPIO14, power, GND all correct).
+#   - Total silence                         -> see docs/wiring.md; check green->GPIO14, red->USB(5V), black->GND.
+#   - Constant garbage with no button press -> floating/miswired data line.
+#
+# This is a throwaway test image. Flash ir-blaster-livingroom.yaml over it when done.
+
+esphome:
+  name: ir-wiring-test
+
+esp32:
+  board: adafruit_feather_esp32_v2
+  framework:
+    type: arduino
+
+logger:
+  level: DEBUG          # raw/decoded IR dumps appear here
+
+# IR RECEIVE (sniff) — green wire -> GPIO14
+remote_receiver:
+  pin:
+    number: GPIO14
+    inverted: false     # 5990 output is buffered/demodulated; do NOT invert
+  dump: all             # log decoded protocol+code AND raw timings
+  tolerance: 25%
+  idle: 25ms
+  buffer_size: 2kb

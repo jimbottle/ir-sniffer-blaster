@@ -64,6 +64,8 @@ for the GUI route.
 | `docs/validation.md`            | Acceptance checklist                                              |
 | `docs/extensions.md`            | Ideas once the basics work                                       |
 | `captured-codes/`               | Record captured IR codes here                                    |
+| `arduino-tests/`                | Arduino IDE diagnostic sketches to verify the IR receiver wiring |
+| `ir-wiring-test.yaml`           | ESPHome no-network receiver test (alternative to `arduino-tests/`)|
 | `AGENTS.md`                     | Orientation for AI agents / contributors                         |
 
 ## Key facts (read before changing the config)
