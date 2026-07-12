@@ -8,7 +8,7 @@ anyone considering substitutions.
 | Part #  | Item                                  | Role                                                              |
 |---------|---------------------------------------|------------------------------------------------------------------|
 | 5990    | IR Remote Transceiver                 | 940 nm emitter + 38 kHz receiver on one board (the sniffer/blaster)|
-| 5900    | ESP32 Feather V2 (with headers)       | The MCU — 8MB flash / 2MB PSRAM, ESP32-WROOM                      |
+| 5900    | ESP32 Feather V2 (with headers)       | The MCU — 8MB flash / 2MB PSRAM, ESP32-PICO-MINI-02               |
 | 4298    | Raspberry Pi 5.1V 3A USB-C PSU        | **Power only** (captive cable) — cannot flash the board          |
 | 4045    | JST PH 2mm 4-pin socket → color cable | Mates the 5990; tinned wire ends push into the breadboard         |
 | 4539    | Half-size breadboard (400 tie points) | Solderless mounting + interconnect                               |
@@ -21,10 +21,24 @@ anyone considering substitutions.
 
 ## Why these parts (context for substitutions)
 
-- **ESP32-WROOM (classic dual-core), not S2/S3** — best-supported silicon for
-  ESPHome's `remote_receiver` / `remote_transmitter` components. ESPHome board key:
+- **Classic dual-core ESP32, not S2/S3** — best-supported silicon for ESPHome's
+  `remote_receiver` / `remote_transmitter` components. ESPHome board key:
   `adafruit_feather_esp32_v2` (variant esp32). Arduino-cli FQBN equivalent:
   `esp32:esp32:adafruit_feather_esp32_v2`.
+
+### Confirmed silicon (read off the actual board)
+
+`esptool` reports the real hardware, which differs slightly from the original brief
+(which said "ESP32-WROOM" — that was wrong, though the practical implication is the
+same: classic dual-core ESP32, variant `esp32`):
+
+| Property   | Value                                  |
+|------------|----------------------------------------|
+| Chip       | **ESP32-PICO-V3-02** (rev v3.1)        |
+| Module     | ESP32-PICO-MINI-02                     |
+| Flash      | 8 MB (embedded)                        |
+| PSRAM      | 2 MB (embedded)                        |
+| USB serial | CH34x-class bridge (VID `0x1A86`); macOS drives it natively — no driver install needed |
 - **5990 has an onboard N-channel FET driver**, so a 3.3V GPIO toggles the emitter
   while the LEDs themselves pull from 5V for 10+ m range. No external transistor
   needed.

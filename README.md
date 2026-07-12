@@ -68,8 +68,10 @@ for the GUI route.
 
 ## Key facts (read before changing the config)
 
-- **Board key:** `adafruit_feather_esp32_v2` (ESP32-WROOM, classic dual-core — best
-  ESPHome IR support). Validated against ESPHome 2026.6.2.
+- **Board key:** `adafruit_feather_esp32_v2` (classic dual-core ESP32 — best ESPHome
+  IR support). Validated against ESPHome 2026.6.2. Confirmed silicon on the actual
+  board: **ESP32-PICO-V3-02**, 8 MB flash / 2 MB PSRAM (the brief's "ESP32-WROOM"
+  was inaccurate; variant is still `esp32`).
 - **Pins:** RX (receive) on **GPIO14**, TX (transmit) on **GPIO27**.
 - **`inverted: false` is correct** for the Adafruit 5990's buffered output. Do
   **not** set it to `true` — that's only for a bare TSOP38238 sensor.

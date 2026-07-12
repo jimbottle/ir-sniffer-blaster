@@ -30,7 +30,9 @@ unless explicitly asked — this repo is in documentation/prep mode.
 
 ## Non-negotiable facts (don't "fix" these)
 
-- ESPHome board key is **`adafruit_feather_esp32_v2`** (ESP32-WROOM, variant esp32).
+- ESPHome board key is **`adafruit_feather_esp32_v2`** (variant esp32). Confirmed
+  silicon: ESP32-PICO-V3-02, 8MB flash / 2MB PSRAM — the brief said "ESP32-WROOM",
+  which is wrong, but the variant/board key are unaffected.
   Not S2/S3. (The brief's `featheresp32-v2` is outdated and fails validation on
   current ESPHome.) Arduino-cli FQBN equivalent: `esp32:esp32:adafruit_feather_esp32_v2`.
 - **RX = GPIO14**, **TX = GPIO27**. These must match `docs/wiring.md`.
