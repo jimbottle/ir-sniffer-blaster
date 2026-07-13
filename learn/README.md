@@ -123,7 +123,7 @@ digitalWrite(LED_PIN, continuity ? HIGH : LOW);   // show it
 - **`if (state != lastState)`** — we only print when the reading *changes*. Without
   this, `loop()` would print hundreds of identical lines a second and you couldn't read
   a thing. Printing on change is a habit worth forming.
-- **`delay(50)`** — pauses 50ms, so we check 20x/second. Instant to a human. It also
+- **`delay(20)`** — pauses 20ms, so we check 50x/second. Instant to a human. It also
   smooths over "contact bounce": as two metal probes touch, they actually make and
   break contact several times in a few milliseconds.
 
@@ -166,11 +166,17 @@ digitalWrite(LED_PIN, continuity ? HIGH : LOW);   // show it
 You should immediately see:
 
 ```
-=== Continuity Tester ===
-Probe A = pin 32   Probe B = GND
-...
-    open        — circuit is BROKEN    (pin 32 sits HIGH)  [LED off]
+=========================================
+ Continuity Tester
+ Probe A = pin 32     Probe B = GND
+ Last reset: POWERON (power applied, or EN/reset pulled low)
+ Only test circuits with the power OFF.
+=========================================
+open        circuit BROKEN     pin32=HIGH   LED=off   contacts=0
 ```
+
+Then **silence**. The sketch prints only when the state *changes*, so quiet means
+"nothing has happened" — not "it's broken".
 
 **Which LED am I watching?** The small **red** LED on the board (GPIO13) — *not* the
 colorful NeoPixel. Right now it should be **off**.
@@ -188,8 +194,8 @@ colorful NeoPixel. Right now it should be **off**.
 
 | | Serial Monitor | Red LED |
 |---|---|---|
-| Probes apart | `open — circuit is BROKEN` | off |
-| **Probes touching** | `*** CONTINUITY — circuit is COMPLETE` | **on** |
+| Probes apart | `open        circuit BROKEN     pin32=HIGH   LED=off   contacts=1` | off |
+| **Probes touching** | `CONTINUITY  circuit COMPLETE   pin32=LOW    LED=ON    contacts=1` | **on** |
 
 Separate them and it flips back. That's your proof: you're reading the physical world
 and reacting to it. Now touch the probes to the two ends of a wire, a paperclip, a
@@ -200,12 +206,24 @@ conduct. Complete → LED on. Broken → LED off.
 
 ## 5. When it doesn't work
 
+> ### 🔴 Check the baud dropdown FIRST
+>
+> **Garbled output (`?? ? ??`) or nothing at all is, nine times out of ten, the Serial
+> Monitor's baud dropdown sitting at 9600.** The sketch transmits at **115200**. They
+> must match, or every byte is sliced at the wrong bit boundary and decodes to garbage.
+>
+> The Arduino IDE **defaults it to 9600 and silently resets it back to 9600** on
+> reconnect — so it can revert after an upload, and it looks like your board broke.
+>
+> Measured on this board: at 9600 the output is pure garbage; at 115200 *the very same
+> bytes* decode perfectly. It is one dropdown. Check it before you suspect anything else.
+
 | Symptom | Cause |
 |---|---|
+| **Garbled characters** (`?? ? ??`) | **Baud dropdown is at 9600. Set it to 115200.** See above. |
+| **Serial Monitor is blank / "nothing on contact"** | Same: **wrong baud**. (Or: the sketch prints only on *change*, so silence with the probes untouched is normal.) |
 | `Waiting for gdb server to start...` / `unable to open ftdi device` | You clicked **Debug** (🐞), not **Upload** (**→**). Debug needs a JTAG probe this board doesn't have — see below. Click the **→** arrow. |
-| Board **reboots every time you touch the probes**; boot noise (`SPI_FAST_FLASH_BOOT`, `configsip:`) shredding your output; banner repeating | **The Arduino Serial Monitor is doing this, not your circuit.** Use `python3 learn/monitor.py` — see [The Arduino Serial Monitor reboots this board](#️-the-arduino-serial-monitor-reboots-this-board-when-you-touch-the-probes). |
-| Serial Monitor is blank | Baud rate isn't **115200** (bottom-right dropdown) |
-| Garbled characters (`�?xÿ`) | Same — wrong baud rate |
+| Board reboots when you touch the probes; boot noise (`SPI_FAST_FLASH_BOOT`, `configsip:`) shredding your output | Seen on this board with the IDE monitor. If it bothers you, `python3 learn/monitor.py` doesn't do it — see [below](#️-if-the-ide-monitor-reboots-the-board-when-you-touch-the-probes). |
 | Upload: *"chip stopped responding"* | **Upload Speed isn't 115200.** See above. |
 | Upload: *"port is busy"* | The **Serial Monitor is holding the port.** Close it, then upload. Only one program can own the port. |
 | No port listed at all | Board unplugged, or a charge-only USB cable. It must be a **data** cable. |
@@ -218,19 +236,20 @@ about it — on a real Arduino Uno, every pin has a pull-up. Note it's the **GPI
 that matters, not the `Ax` silkscreen label: those labels map to different GPIOs on
 different Feather revisions, so always check the number.
 
-### ⚠️ The Arduino Serial Monitor reboots this board when you touch the probes
+### ⚠️ If the IDE monitor reboots the board when you touch the probes
 
-**This is the big one.** If your output looks like this — real text shredded by boot
-messages, every time you complete the circuit —
+**First make sure the baud dropdown is 115200** (see above) — that accounts for most of
+what looks like this. But if, at the *correct* baud, you still see your output shredded
+by boot messages every time you complete the circuit:
 
 ```
 ff]
-        — circuit is BROKEN    (pin 32 sits HIGH)  [LED oPI_FAST_FLASH_BOOT)
+        circuit BROKEN    pin32=HIGH  LED=oPI_FAST_FLASH_BOOT)
 configsip: 271414342, SPIWP:0xee
-clk_drv:0     ��  � �  0   � �  �
+clk_drv:0
 ```
 
-**your wiring and your code are fine. The Serial Monitor is rebooting your chip.**
+**your wiring and your code are fine — the chip is rebooting.**
 
 Each reset re-runs `setup()`, and the `lastState = -1` sentinel forces one print. So you
 get: reboot → banner → one status line → reboot → ... forever. It looks completely broken.
@@ -252,22 +271,35 @@ difference is what the measurement above isolates. (The exact electrical path by
 making the probe contact then tips EN isn't fully pinned down — but it is *not* your
 hands, and it is *not* your wiring.)
 
-**The fix — use the included monitor instead:**
+**A fallback if it bothers you** — a terminal monitor that doesn't do this:
 
 ```bash
 pip install pyserial          # one time
 python3 learn/monitor.py
 ```
 
-Ctrl-C to quit. **Close it before uploading** — only one program can own the port. Keep
-using the Arduino IDE to *edit, verify and upload* exactly as before; it is only the
-**Serial Monitor** that's unusable on this board.
+Ctrl-C to quit. **Close it before uploading** — only one program can own the port.
+
+This is entirely optional, and it's *not* the main path: the Arduino IDE Serial Monitor
+is the tool this project is meant to teach, and at **115200** it works. Use `monitor.py`
+only if the reboots make the IDE monitor impractical for you, or when you want to script
+against the board.
 
 One honest caveat: `monitor.py` **does** reboot the board once, as it opens the port —
 macOS asserts DTR on open no matter what we ask for. That single reset is harmless, and
-it's what prints the fresh `=== Continuity Tester ===` banner immediately. What it
-doesn't do is reset the chip *while you're probing*, which is the part that was breaking
-you.
+it's what prints the fresh `Continuity Tester` banner immediately. What it doesn't do is
+reset the chip *while you're probing*.
+
+### Optional: prove it with one command
+
+```bash
+python3 learn/verify.py
+```
+
+Touch the probes together and apart. It watches the stream and exits **PASS** once it has
+seen the banner, a contact made, a contact broken, the counter increment, and zero
+mojibake — or **FAIL** with the specific reason. Same thing you can confirm by eye in the
+Serial Monitor; this just makes it a pass/fail check.
 
 ### Is it a *real* reset loop?
 

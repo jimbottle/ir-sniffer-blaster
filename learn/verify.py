@@ -1,25 +1,27 @@
 #!/usr/bin/env python3
 """Live verifier for the continuity tester.
 
-Runs a loop against the board and proves, end to end, that:
-  1. the sketch is running        (heartbeat lines arriving)
-  2. output is clean              (no mojibake, no reboots)
-  3. the pin-to-pin trigger works (contact MADE and BROKEN both detected,
-                                   and the contacts counter increments)
+Proves, end to end, that:
+  1. the sketch is running        (its banner arrives)
+  2. the stream is clean          (no mojibake -> baud is right)
+  3. the pin-to-pin trigger works (contact MADE and BROKEN both detected, and the
+                                   contacts counter increments)
 
 Prints each event live as you touch the probes, then a PASS/FAIL verdict.
 
+This is optional. You can do the same thing by eye in the Arduino IDE's Serial
+Monitor (at 115200 baud) - this just turns it into a pass/fail check.
+
 USAGE
 -----
-    python3 learn/verify.py
+    python3 learn/verify.py                 # auto-detect the board
+    python3 learn/verify.py /dev/cu.xxxx    # or name the port
 
-Then touch the two probe leads (pin 32 and GND) together and apart a few times.
-It exits PASS as soon as it has seen a clean make + break. Ctrl-C to stop early.
-
+Then touch the two probe leads (pin 32 and GND) together and apart.
 Close the Arduino IDE Serial Monitor first - only one program can own the port.
 """
 
-import glob
+import codecs
 import re
 import sys
 import time
@@ -29,17 +31,12 @@ try:
 except ImportError:
     sys.exit("pyserial not installed.  Run:  pip install pyserial")
 
-BAUD = 115200
+# Reuse the port-picking logic rather than re-implementing (and re-breaking) it.
+from monitor import BAUD, find_port
+
 TIMEOUT_S = 120
 
-
-def find_port() -> str:
-    if len(sys.argv) > 1:
-        return sys.argv[1]
-    ports = sorted(glob.glob("/dev/cu.usbserial-*") + glob.glob("/dev/cu.usbmodem*"))
-    if not ports:
-        sys.exit("No board found. Plug it in.")
-    return ports[0]
+BANNER = "Continuity Tester"
 
 
 def main() -> None:
@@ -54,13 +51,16 @@ def main() -> None:
         sys.exit(f"Could not open {port}: {exc}\nClose the Arduino Serial Monitor.")
 
     print(f"--- {port} @ {BAUD}")
-    print("--- TOUCH THE PROBES TOGETHER AND APART a few times.")
-    print("--- (pin 32 <-> GND).  Ctrl-C to stop.\n")
+    print("--- The board reboots once as this opens; that's expected, and it's")
+    print("--- what prints the banner. Reboots after that would be real.")
+    print("--- Now TOUCH THE PROBES TOGETHER AND APART (pin 32 <-> GND). Ctrl-C quits.\n")
 
+    decoder = codecs.getincrementaldecoder("utf-8")("replace")
     buf = ""
-    seen: set[str] = set()
-    made = broke = beats = reboots = mojibake = 0
+    made = broke = reboots = mojibake = 0
     counter_hi = 0
+    banner_seen = False
+    first_event_skipped = False
     start = time.time()
 
     try:
@@ -68,28 +68,48 @@ def main() -> None:
             data = ser.read(256)
             if not data:
                 continue
-            buf += data.decode("utf-8", "replace")
-            lines, buf = buf.split("\n")[:-1], buf.split("\n")[-1]
-            for line in lines:
-                line = line.rstrip("\r")
+            buf += decoder.decode(data)
+            *lines, buf = buf.split("\n")
+            for raw in lines:
+                line = raw.rstrip("\r")
                 mojibake += line.count("�")
-                if "rst:0x" in line:
+
+                if BANNER in line:
+                    banner_seen = True
+                    print(f"  [{time.time()-start:5.1f}s] banner seen - sketch is running")
+                    continue
+
+                # Only count reboots AFTER the banner. The open-time reset is expected
+                # (macOS asserts DTR on open); flagging it every run would be crying wolf.
+                if "rst:0x" in line and banner_seen:
                     reboots += 1
-                    print(f"  [{time.time()-start:5.1f}s] *** REBOOT ***")
-                if "beat" in line:
-                    beats += 1
+                    print(f"  [{time.time()-start:5.1f}s] *** UNEXPECTED REBOOT ***")
+                    continue
+
                 m = re.search(r"contacts=(\d+)", line)
                 if m:
                     counter_hi = max(counter_hi, int(m.group(1)))
-                if line.startswith(">>> CHANGE") and line not in seen:
-                    seen.add(line)
-                    if "CONTINUITY" in line:
-                        made += 1
-                        print(f"  [{time.time()-start:5.1f}s] CONTACT MADE    -> {line[12:].strip()}")
-                    else:
-                        broke += 1
-                        print(f"  [{time.time()-start:5.1f}s] contact broken  -> {line[12:].strip()}")
-            if made >= 1 and broke >= 2 and counter_hi >= 1:
+
+                is_made = line.startswith("CONTINUITY")
+                is_broke = line.startswith("open")
+                if not (is_made or is_broke):
+                    continue
+
+                # The sketch seeds lastState = -1, so it always prints ONE line at boot
+                # describing the state it woke up in. That is not a probe event.
+                if not first_event_skipped:
+                    first_event_skipped = True
+                    print(f"  [{time.time()-start:5.1f}s] (boot state: {line.split()[0]})")
+                    continue
+
+                if is_made:
+                    made += 1
+                    print(f"  [{time.time()-start:5.1f}s] CONTACT MADE    -> {line.strip()}")
+                else:
+                    broke += 1
+                    print(f"  [{time.time()-start:5.1f}s] contact broken  -> {line.strip()}")
+
+            if made >= 1 and broke >= 1 and counter_hi >= 1:
                 break
     except KeyboardInterrupt:
         print("\n(stopped)")
@@ -99,27 +119,30 @@ def main() -> None:
         ser.close()
 
     print("\n================= VERDICT =================")
-    print(f"  sketch alive (heartbeats) : {beats}")
+    print(f"  sketch running (banner)   : {banner_seen}")
     print(f"  contact MADE events       : {made}")
     print(f"  contact BROKEN events     : {broke}")
     print(f"  contacts counter reached  : {counter_hi}")
-    print(f"  spurious reboots          : {reboots}")
+    print(f"  unexpected reboots        : {reboots}")
     print(f"  mojibake characters       : {mojibake}")
 
-    ok = beats > 0 and made >= 1 and counter_hi >= 1 and mojibake == 0
+    ok = banner_seen and made >= 1 and broke >= 1 and counter_hi >= 1 and mojibake == 0
     if ok:
         print("\n  PASS - the pin-to-pin trigger works and prints correctly.")
         if reboots:
-            print(f"  (note: {reboots} reboot(s) seen, but the trigger still worked)")
+            print(f"  (note: {reboots} unexpected reboot(s) - worth a look, but the trigger worked)")
     else:
         print("\n  FAIL")
-        if beats == 0:
-            print("   - No heartbeat: sketch not running, or wrong baud. Re-upload.")
-        if made == 0:
-            print("   - No contact detected: check a jumper is in pin 32 and one in GND,")
-            print("     and that you actually touched the metal ends together.")
+        if not banner_seen:
+            print("   - No banner. Sketch not running, or the baud is wrong. Re-upload,")
+            print("     and check Serial.begin(115200) matches.")
         if mojibake:
-            print("   - Mojibake: baud mismatch somewhere.")
+            print("   - Mojibake: baud mismatch. The board talks at 115200.")
+        if made == 0:
+            print("   - No contact detected: check one jumper is in pin 32 and one in GND,")
+            print("     and that you touched the metal ends together.")
+        elif broke == 0:
+            print("   - Contact made but never released - separate the probes too.")
     sys.exit(0 if ok else 1)
 
 

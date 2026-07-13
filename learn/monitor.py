@@ -23,7 +23,7 @@ WHAT IT DOES *NOT* DO
 It does not avoid the reset when the port is FIRST OPENED. macOS asserts DTR on open
 no matter what we ask for, so the board reboots once as this script starts — verified.
 That one reset is harmless, and it's actually useful: it's what prints the fresh
-`=== Continuity Tester ===` banner you see straight away.
+`Continuity Tester` banner you see straight away.
 
 The property that matters is the one above: no resets while you're probing.
 
@@ -39,7 +39,6 @@ Ctrl-C to quit. Close it before uploading — only one program can own the port.
 import codecs
 import glob
 import sys
-import time
 
 try:
     import serial
@@ -47,17 +46,23 @@ except ImportError:
     sys.exit("pyserial not installed.  Run:  pip install pyserial")
 
 BAUD = 115200
-USAGE = "usage: monitor.py [PORT]    (auto-detects /dev/cu.usbserial-* if omitted)"
+USAGE = ("usage: monitor.py [PORT]\n"
+         "  auto-detects /dev/cu.usbserial-* or /dev/cu.usbmodem* if omitted")
 
 
 def find_port() -> str:
-    args = [a for a in sys.argv[1:] if a not in ("-h", "--help")]
-    if any(a in ("-h", "--help") for a in sys.argv[1:]):
+    argv = sys.argv[1:]
+    if any(a in ("-h", "--help") for a in argv):
         print(USAGE)
         print(__doc__)
         raise SystemExit(0)
-    if args:
-        return args[0]
+    # Anything else starting with '-' is a flag we don't support. Don't silently
+    # treat it as a port path and fail with a confusing "Could not open --baud".
+    unknown = [a for a in argv if a.startswith("-")]
+    if unknown:
+        sys.exit(f"unknown option: {unknown[0]}\n{USAGE}")
+    if argv:
+        return argv[0]
 
     ports = sorted(glob.glob("/dev/cu.usbserial-*") + glob.glob("/dev/cu.usbmodem*"))
     if not ports:

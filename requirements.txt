@@ -10,4 +10,4 @@ esphome==2026.6.2
 
 # Used directly by learn/monitor.py (a serial monitor that doesn't reset the ESP32).
 # ESPHome happens to pull this in too, but don't rely on that — declare it.
-pyserial
+pyserial==3.5

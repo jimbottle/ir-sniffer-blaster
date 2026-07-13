@@ -19,10 +19,19 @@
  *   IR emitter on.
  *
  * SERIAL MONITOR:  Tools > Serial Monitor, and set the baud dropdown to 115200.
- *   It MUST match Serial.begin(115200) below. At the wrong rate every byte is
- *   sliced at the wrong bit boundary and you get garbage like "?? ? ??".
- *   (The IDE likes to reset that dropdown to 9600. If you see garbage, check it
- *   first - it has probably reverted.)
+ *
+ *   THE BAUD DROPDOWN IS THE #1 THING THAT GOES WRONG. It must match the
+ *   Serial.begin(115200) below. The Arduino IDE defaults it to 9600 and resets it
+ *   back to 9600 on reconnect - so it can silently revert after an upload.
+ *
+ *   At the wrong rate every byte is sliced at the wrong bit boundary and you get
+ *   garbage like "?? ? ??" - or nothing readable at all. That is NOT a broken
+ *   board, a broken sketch, or bad wiring. It is one dropdown. Check it first,
+ *   every time. (Measured on this board: at 9600 the output is pure garbage; at
+ *   115200 the very same bytes decode perfectly.)
+ *
+ *   If you ever want to read the board from a terminal instead, there's
+ *   `python3 learn/monitor.py` - handy for scripting, but not required.
  *
  * ===========================================================================
  * THE ONE IDEA THAT MAKES THIS WORK
@@ -141,14 +150,15 @@ unsigned long contacts = 0;   // how many times contact has been made this sessi
 // the core idea; delete it freely when you rebuild this.
 const char* resetReason() {
   switch (esp_reset_reason()) {
-    case ESP_RST_POWERON:   return "POWERON (power applied, or reset pressed)";
+    case ESP_RST_POWERON:   return "POWERON (power applied, or EN/reset pulled low)";
     case ESP_RST_EXT:       return "EXTERNAL reset pin";
     case ESP_RST_SW:        return "SOFTWARE restart";
     case ESP_RST_PANIC:     return "PANIC - the sketch crashed";
-    case ESP_RST_BROWNOUT:  return "BROWNOUT - supply voltage sagged";
-    case ESP_RST_INT_WDT:
-    case ESP_RST_TASK_WDT:
-    case ESP_RST_WDT:       return "WATCHDOG";
+    case ESP_RST_BROWNOUT:  return "BROWNOUT - supply voltage sagged (weak USB/cable)";
+    case ESP_RST_INT_WDT:   return "WATCHDOG (interrupt)";
+    case ESP_RST_TASK_WDT:  return "WATCHDOG (task)";
+    case ESP_RST_WDT:       return "WATCHDOG (other)";
+    case ESP_RST_DEEPSLEEP: return "wake from deep sleep";
     default:                return "unknown";
   }
 }
@@ -223,7 +233,8 @@ void loop() {
       Serial.print("CONTINUITY  circuit COMPLETE   pin32=LOW    LED=ON    contacts=");
       Serial.println(contacts);
     } else {
-      Serial.println("open        circuit BROKEN     pin32=HIGH   LED=off");
+      Serial.print("open        circuit BROKEN     pin32=HIGH   LED=off   contacts=");
+      Serial.println(contacts);
     }
     lastState = state;                  // remember it, so we don't print it again
   }
