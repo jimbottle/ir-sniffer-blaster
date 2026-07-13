@@ -35,23 +35,34 @@
 
 // ---- Pin choices -----------------------------------------------------------
 //
-// Why pin 32? Two reasons, both ESP32-specific:
-//   * It has a usable internal pull-up resistor. Pins A2/A3/A4 (GPIO 34/39/36)
-//     are INPUT-ONLY on the ESP32 and have NO internal pull-ups — INPUT_PULLUP
-//     silently does nothing there and this sketch would misread. Avoid them.
-//   * It isn't a "strapping" pin (0, 2, 5, 12, 15), which the chip samples at
-//     boot to decide how to start up. Holding one of those low with a probe
-//     could stop the board booting.
+// Why pin 32? Three reasons, all ESP32-specific:
+//
+//   * It has a usable internal pull-up. GPIO 34, 35, 36, 37, 38 and 39 are
+//     INPUT-ONLY on the ESP32 and have NO internal pull-up at all — INPUT_PULLUP
+//     silently does nothing there, the pin floats, and this sketch would read
+//     garbage. (Go by GPIO NUMBER, not the silkscreen label: the "Ax" labels map
+//     to different GPIOs on different Feather revisions.)
+//
+//   * It isn't a "strapping" pin (0, 2, 5, 12, 15). The chip reads those at boot
+//     to decide how to start up, so holding one low with a probe could stop the
+//     board booting.
+//
+//   * It isn't used by the 5990 IR board (that uses GPIO14 and GPIO27), so you can
+//     leave that hardware plugged in while you use this tester.
 const int SENSE_PIN = 32;
 
-// LED_BUILTIN is defined by the board package — on this Feather it's GPIO13,
-// the little red LED. Using the name instead of "13" means the sketch would
-// still work if you moved it to a different board.
+// LED_BUILTIN is defined by the board package — on this Feather it's GPIO13, the
+// small RED LED (not the NeoPixel). Using the name instead of "13" means the sketch
+// would still work if you moved it to a different board.
 const int LED_PIN = LED_BUILTIN;
 
-// Remembers what we saw last time around, so we only print when something
-// actually changes instead of flooding the Serial Monitor 20x a second.
-int lastState = -1;   // -1 = "nothing seen yet"
+// Remembers what we saw last time around, so we only print when something actually
+// changes instead of flooding the Serial Monitor 20x a second.
+//
+// -1 is a deliberate sentinel: digitalRead() can only ever return 0 or 1, so the
+// FIRST comparison in loop() is guaranteed to differ. That forces exactly one print
+// on startup, so you see the initial state instead of a blank screen.
+int lastState = -1;
 
 void setup() {
   // setup() runs ONCE, right after the board powers up or resets.

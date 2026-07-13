@@ -1,6 +1,13 @@
 esphome:
   name: ir-blaster-livingroom
   friendly_name: IR Blaster (Living Room)
+  platformio_options:
+    # This board's USB-serial bridge is a CH34x (VID 0x1A86), which is unreliable at
+    # the 921600 upload speed the ESP32 board definition defaults to — the flash
+    # connects, IDs the chip, then dies with "chip stopped responding". 115200 works.
+    # (Not an esptool default; esptool's own default is 115200. The 921600 comes from
+    # the Arduino/PlatformIO board manifest.)
+    upload_speed: 115200
 
 esp32:
   board: adafruit_feather_esp32_v2   # ESPHome key for the Adafruit Feather ESP32 V2 (variant esp32)

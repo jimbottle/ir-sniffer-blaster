@@ -17,6 +17,10 @@
 
 esphome:
   name: ir-wiring-test
+  platformio_options:
+    # CH34x USB-serial bridge is unreliable at the board definition's default 921600
+    # upload speed ("chip stopped responding"). See docs/hardware.md.
+    upload_speed: 115200
 
 esp32:
   board: adafruit_feather_esp32_v2

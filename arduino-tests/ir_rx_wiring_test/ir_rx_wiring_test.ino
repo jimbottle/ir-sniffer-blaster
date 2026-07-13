@@ -2,24 +2,36 @@
 //
 // Board : Adafruit Feather ESP32 V2      Sensor: Adafruit 5990 IR transceiver
 // Green (IR data OUT, receiver -> MCU) -> GPIO14
+// White (IR data IN,  MCU -> emitter)  -> GPIO27   (held LOW here; emitter stays off)
 // Red   (V+)  -> USB pin (5V)     Black (GND) -> GND
 //
-// This does NOT decode IR. It answers one question: is the receiver wired and
-// alive? It reports the idle line level, then counts signal edges when you press
-// a remote.
+// This does NOT decode IR. It answers one question: is the receiver wired and alive?
 //
 // Serial Monitor @ 115200 baud.
 //
-// EXPECTED:
-//   "Idle level: 1 (HIGH)"  -> receiver is powered and driving the line. Good.
-//   Press a remote -> "IR DETECTED! edges=..."  -> data path works. Wiring is GOOD.
+// ---------------------------------------------------------------------------
+// HOW TO READ IT
 //
-// TROUBLESHOOTING:
-//   Idle level: 0 (LOW), never changes   -> green wire likely not on GPIO14, or the
-//                                           5990 has no power (check red->5V, black->GND).
-//   Idle flickers / edges with no remote -> floating pin: green wire not seated.
-//   Idle HIGH but no edges on press      -> green wire wrong pin, or remote is dead /
-//                                           not 38 kHz / not aimed at the sensor.
+// The sketch prints a static probe, then waits for edges. THE EDGES ARE THE VERDICT.
+//
+//   "DRIVEN HIGH"  -> sensor is connected and actively holding the line high. Good.
+//   "DRIVEN LOW"   -> something is holding GPIO14 at ground. Suspect a short or a
+//                     miswired lead.
+//   "UNDETERMINED" -> the static probe CANNOT tell these two apart:
+//                       (a) nothing connected (pin floating), or
+//                       (b) a connected sensor whose output idles high through its
+//                           own weak internal pull-up (open-drain, typical of
+//                           TSOP-class demodulators).
+//                     Both look identical to a static read. To settle it:
+//                       PRESS A REMOTE.  Edges => connected.  No edges => not connected.
+//
+// So: press a remote at the sensor. That is the real test.
+//   Edges appear    -> receive path works. Wiring is GOOD.
+//   No edges at all -> sensor not connected / unpowered / green wire not on GPIO14,
+//                      or the remote is dead / not 38 kHz / not aimed at the sensor.
+//   Edges with NO remote pressed -> noise on the line (the emitter can't be the
+//                      cause; we hold GPIO27 low).
+// ---------------------------------------------------------------------------
 
 const int IR_RX_PIN = 14;   // green — IR data OUT (receiver -> MCU)
 const int IR_TX_PIN = 27;   // white — IR data IN  (MCU -> emitter)
@@ -30,40 +42,64 @@ void IRAM_ATTR onIrEdge() {
   edgeCount++;
 }
 
-// Read the pin with a given input mode, after letting the line settle.
-int probe(int mode) {
+// Read the pin under a given input mode, several times, and only report a level if
+// every sample agrees. Returns HIGH, LOW, or -1 for "unstable" (the line was moving
+// while we looked — e.g. a remote is being pressed, or a fluorescent/PWM lamp is
+// hitting the sensor).
+int probeStable(int mode) {
   pinMode(IR_RX_PIN, mode);
-  delay(5);
-  return digitalRead(IR_RX_PIN);
+  delay(5);                       // let the line settle
+  int first = digitalRead(IR_RX_PIN);
+  for (int i = 0; i < 8; i++) {
+    delay(2);
+    if (digitalRead(IR_RX_PIN) != first) return -1;   // it moved: not stable
+  }
+  return first;
 }
 
-// Is anything actually DRIVING the pin, or is it floating (disconnected)?
+// Try to characterize what (if anything) is on GPIO14.
 //
-// A floating pin obeys whichever internal resistor we enable: pull-down -> LOW,
-// pull-up -> HIGH. The 5990's output is a buffered push-pull driver, so when it IS
-// connected it overpowers the ESP32's weak (~45k) internal resistors and holds its
-// level regardless. That difference is what tells "sensor connected" apart from
-// "nothing on the wire" — which reading the pin once CANNOT do.
+// The idea: toggle the ESP32's internal pull-down / pull-up and see whether the pin
+// FOLLOWS them. A floating pin obeys whatever weak resistor we enable.
+//
+// IMPORTANT LIMIT — why this cannot be the final word:
+// It is tempting to conclude "follows the resistors => nothing is connected." That is
+// only true if the sensor drives the line hard (push-pull). Many IR demodulators use
+// an OPEN-DRAIN output with a ~30k internal pull-up: they only pull DOWN actively and
+// let a weak resistor supply the idle high. Against the ESP32's ~45k pull-down, that
+// forms a divider around 2.0V — under the ~2.48V logic-high threshold — so a perfectly
+// good sensor reads LOW too, and looks exactly like a floating pin.
+//
+// We have not confirmed the 5990's output stage, so we DO NOT claim "not connected"
+// from this probe alone. We report it as undetermined and let the edge count decide.
 void reportConnection() {
-  int withPulldown = probe(INPUT_PULLDOWN);
-  int withPullup   = probe(INPUT_PULLUP);
+  int withPulldown = probeStable(INPUT_PULLDOWN);
+  int withPullup   = probeStable(INPUT_PULLUP);
   pinMode(IR_RX_PIN, INPUT);          // restore plain input for the real test
 
-  Serial.print("Pin follows pulldown/pullup: ");
-  Serial.print(withPulldown);
+  Serial.print("Static probe — pulldown/pullup reads: ");
+  Serial.print(withPulldown < 0 ? -1 : withPulldown);
   Serial.print("/");
-  Serial.println(withPullup);
+  Serial.println(withPullup < 0 ? -1 : withPullup);
 
-  if (withPulldown == LOW && withPullup == HIGH) {
-    Serial.println(">>> FLOATING — nothing is driving GPIO14.");
-    Serial.println(">>> The 5990 is NOT CONNECTED (or has no power, or the green");
-    Serial.println(">>> wire isn't seated). Any 'IR detected' below would be noise.");
+  if (withPulldown < 0 || withPullup < 0) {
+    Serial.println(">>> UNSTABLE — the line was moving while we probed.");
+    Serial.println(">>> Make sure no remote is being pressed (and no bright/flickering");
+    Serial.println(">>> lamp is on the sensor), then reset the board to retry.");
   } else if (withPulldown == HIGH && withPullup == HIGH) {
-    Serial.println(">>> DRIVEN HIGH — the 5990 is connected and idle. This is correct.");
-    Serial.println(">>> Press a remote; you should see edges.");
+    Serial.println(">>> DRIVEN HIGH — something is actively holding GPIO14 high.");
+    Serial.println(">>> The 5990 is connected and idle. This is correct.");
   } else if (withPulldown == LOW && withPullup == LOW) {
-    Serial.println(">>> DRIVEN LOW — something is holding GPIO14 low.");
+    Serial.println(">>> DRIVEN LOW — something is holding GPIO14 at ground.");
     Serial.println(">>> Suspect a short to GND, or a miswired lead.");
+  } else {
+    // pulldown=LOW, pullup=HIGH: the pin followed our internal resistors.
+    Serial.println(">>> UNDETERMINED — the pin followed our internal resistors.");
+    Serial.println(">>> That means EITHER (a) nothing is connected (floating), OR");
+    Serial.println(">>> (b) the sensor IS connected but idles high through its own");
+    Serial.println(">>> weak pull-up (open-drain output). A static read cannot tell");
+    Serial.println(">>> these apart.");
+    Serial.println(">>> ---> PRESS A REMOTE. Edges = connected. No edges = not connected.");
   }
 }
 
@@ -77,8 +113,7 @@ void setup() {
   // receiver. ESP32 pins come out of reset as floating inputs, so if we leave GPIO27
   // undriven it can float high/noisy, fire the 940nm LEDs, and flood our own
   // demodulator — producing endless edges with no remote in the room. That would
-  // look exactly like the "floating RX pin" fault this sketch is meant to detect.
-  // Driving it LOW holds the emitter off for the duration of the test.
+  // look exactly like a receiver fault. Driving it LOW holds the emitter off.
   pinMode(IR_TX_PIN, OUTPUT);
   digitalWrite(IR_TX_PIN, LOW);
 
@@ -90,7 +125,8 @@ void setup() {
 
   attachInterrupt(digitalPinToInterrupt(IR_RX_PIN), onIrEdge, CHANGE);
 
-  Serial.println("Now point a remote at the 5990 and press buttons...");
+  Serial.println();
+  Serial.println("NOW PRESS A REMOTE at the 5990 — this is the real test.");
   Serial.println();
 }
 
@@ -101,14 +137,14 @@ void loop() {
   interrupts();
 
   if (count > 0) {
-    // Re-sample the level too: with no remote pressed the line should return to
-    // idle HIGH between bursts. Edges that keep coming while the level sits at a
-    // constant value (or with no remote in use) mean noise, not IR.
-    Serial.print("IR DETECTED!  edges=");
+    // Re-sample the level too: with no remote pressed the line should sit at idle
+    // between bursts. Edges that keep coming when you AREN'T pressing a remote mean
+    // noise, not IR.
+    Serial.print("IR EDGES: ");
     Serial.print(count);
     Serial.print("  level=");
     Serial.print(digitalRead(IR_RX_PIN));
-    Serial.println("   -> receive path is working (if you pressed a remote).");
+    Serial.println("   -> if you pressed a remote, the RECEIVE PATH WORKS.");
   }
 
   delay(200);

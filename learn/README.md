@@ -9,6 +9,9 @@ project needs is already inside the microcontroller.
 
 > Standalone learning exercise — unrelated to the IR blaster firmware in the rest of
 > this repo. It just borrows the same board.
+>
+> **If the 5990 IR board is already wired to the Feather, leave it.** It uses GPIO14
+> and GPIO27; this project uses pin 32 and doesn't touch either. Nothing to unplug.
 
 ---
 
@@ -162,6 +165,9 @@ Probe A = pin 32   Probe B = GND
     open        — circuit is BROKEN    (pin 32 sits HIGH)  [LED off]
 ```
 
+**Which LED am I watching?** The small **red** LED on the board (GPIO13) — *not* the
+colorful NeoPixel. Right now it should be **off**.
+
 ### Wire it up (two jumpers)
 
 | Jumper | Into | Is |
@@ -196,10 +202,12 @@ conduct. Complete → LED on. Broken → LED off.
 | No port listed at all | Board unplugged, or a charge-only USB cable. It must be a **data** cable. |
 | Always says CONTINUITY, even with probes apart | Probe A is in a **GND** pin, or the two jumpers are touching. |
 | Always says open, even with probes touching | Probe B isn't actually in GND; or a jumper isn't seated. |
-| Reading flickers randomly | You used **A2/A3/A4** (GPIO 34/39/36). Those are **input-only with NO internal pull-up** — `INPUT_PULLUP` does nothing there and the pin floats. **Use pin 32.** |
+| Reading flickers randomly | You picked an **input-only** pin: **GPIO 34, 35, 36, 37, 38, 39** have **NO internal pull-up** at all. `INPUT_PULLUP` silently does nothing there and the pin floats. **Use pin 32.** |
 
-That last one is the classic ESP32 trap, and no generic Arduino tutorial will warn you
-about it — on a real Arduino Uno, every pin has a pull-up.
+That last one is the classic ESP32 trap, and no generic Arduino tutorial warns you about
+it — on a real Arduino Uno, every pin has a pull-up. Note it's the **GPIO number** that
+matters, not the `Ax` silkscreen label: those labels map to different GPIOs on different
+Feather revisions, so always check the number.
 
 ---
 
@@ -209,8 +217,11 @@ Small changes, each teaching one thing:
 
 1. **Invert the LED** so it's on when the circuit is *open*. (One character. Do you
    understand *why* it's one character?)
-2. **Change the sense pin** to `27` or `33`. Move the jumper. It should just work — but
-   try `34` and watch it break, then reread the trap above.
+2. **Change the sense pin** to `33`. Move the jumper. It should just work — then try
+   `34` and watch it break, and reread the input-only trap above.
+   ⚠️ **Don't use pin `27`** — on this board that's the wire that drives the 5990's IR
+   emitter. Setting it to `INPUT_PULLUP` would hold the emitter gate high and fire the
+   IR LED continuously.
 3. **Blink instead of solid**: on continuity, blink the LED rather than holding it on.
    Now you need a variable that remembers time — meet `millis()`.
 4. **Add a beep counter**: print how many times continuity was made. This teaches

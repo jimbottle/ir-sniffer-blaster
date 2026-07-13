@@ -45,9 +45,18 @@ classic dual-core ESP32, variant `esp32`):
 | PSRAM      | 2 MB (embedded)                        |
 | USB serial | CH34x-class bridge (VID `0x1A86`); macOS drives it natively — no driver install needed |
 
-> The CH34x bridge is unreliable at ESPHome/esptool's default 921600 upload speed —
-> flashing fails with "chip stopped responding". Use 115200 (Arduino IDE:
-> **Tools → Upload Speed → 115200**).
+> **The CH34x bridge is unreliable at 921600 baud.** Flashing connects, identifies the
+> chip, then dies with *"A fatal error occurred: The chip stopped responding."* It looks
+> like dead hardware; it's the baud rate. Use **115200**.
+>
+> The 921600 default comes from the **ESP32 Arduino/PlatformIO board definition**, not
+> from esptool (esptool's own default is 115200). So the fix differs per toolchain:
+>
+> | Toolchain | Fix |
+> |---|---|
+> | ESPHome (`esphome run`) | Already applied — both configs set `platformio_options: upload_speed: 115200` |
+> | Arduino IDE | **Tools → Upload Speed → 115200** |
+> | `arduino-cli` | append `:UploadSpeed=115200` to the FQBN |
 
 ## The 5990 transceiver
 
