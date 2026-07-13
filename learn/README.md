@@ -10,12 +10,9 @@ project needs is already inside the microcontroller.
 > Standalone learning exercise — unrelated to the IR blaster firmware in the rest of
 > this repo. It just borrows the same board.
 >
-> **If the 5990 IR board is already wired to the Feather, leave it.** The tester senses
-> on pin 32, which the IR board doesn't use. It also deliberately drives **GPIO27 LOW**
-> to hold the 5990's infrared emitter off — because a pin you never configure comes out
-> of reset *floating*, and a floating gate there could run the IR LEDs the whole session.
-> ("Not using a pin" is not the same as "that pin is off." That's a real embedded lesson,
-> and it's why those two lines are in `setup()`.)
+> **Nothing else should be attached.** If the 5990 IR board happens to be wired to the
+> Feather, unplug it — this sketch is deliberately minimal and doesn't configure its
+> pins. Just the Feather and two jumpers.
 
 ---
 
