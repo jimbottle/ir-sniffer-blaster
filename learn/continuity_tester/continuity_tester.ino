@@ -56,6 +56,17 @@ const int SENSE_PIN = 32;
 // would still work if you moved it to a different board.
 const int LED_PIN = LED_BUILTIN;
 
+// Not used by the tester — but if the 5990 IR board is still wired to this Feather,
+// GPIO27 is the wire that switches its infrared emitter on. An ESP32 pin that you
+// never configure comes out of reset as a FLOATING input: undefined, drifting, and
+// liable to read as "on". That would quietly run the IR LEDs the whole time this
+// sketch is up.
+//
+// The lesson (a real embedded one): if other hardware is attached to your board, put
+// its pins in a known, safe state — even the ones your program doesn't care about.
+// "I'm not using that pin" is not the same as "that pin is off".
+const int IR_EMITTER_PIN = 27;
+
 // Remembers what we saw last time around, so we only print when something actually
 // changes instead of flooding the Serial Monitor 20x a second.
 //
@@ -91,6 +102,12 @@ void setup() {
 
   // OUTPUT means we drive this pin: we set its voltage, we don't read it.
   pinMode(LED_PIN, OUTPUT);
+
+  // Hold the 5990's IR emitter off, in case that board is still wired up. See the
+  // comment on IR_EMITTER_PIN above: an unconfigured pin floats, and a floating gate
+  // here could run the IR LEDs for the whole session. Harmless if nothing is attached.
+  pinMode(IR_EMITTER_PIN, OUTPUT);
+  digitalWrite(IR_EMITTER_PIN, LOW);
 
   Serial.println();
   Serial.println("=== Continuity Tester ===");

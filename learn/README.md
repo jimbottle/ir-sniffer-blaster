@@ -10,8 +10,12 @@ project needs is already inside the microcontroller.
 > Standalone learning exercise — unrelated to the IR blaster firmware in the rest of
 > this repo. It just borrows the same board.
 >
-> **If the 5990 IR board is already wired to the Feather, leave it.** It uses GPIO14
-> and GPIO27; this project uses pin 32 and doesn't touch either. Nothing to unplug.
+> **If the 5990 IR board is already wired to the Feather, leave it.** The tester senses
+> on pin 32, which the IR board doesn't use. It also deliberately drives **GPIO27 LOW**
+> to hold the 5990's infrared emitter off — because a pin you never configure comes out
+> of reset *floating*, and a floating gate there could run the IR LEDs the whole session.
+> ("Not using a pin" is not the same as "that pin is off." That's a real embedded lesson,
+> and it's why those two lines are in `setup()`.)
 
 ---
 
@@ -150,10 +154,16 @@ digitalWrite(LED_PIN, continuity ? HIGH : LOW);   // show it
 > *"A fatal error occurred: The chip stopped responding."* It looks like broken hardware.
 > It isn't — it's just the baud rate. We hit this exact failure and confirmed 115200
 > fixes it.
+>
+> **Set this AFTER choosing the board.** Picking the board resets this menu back to its
+> 921600 default, so if you set the speed first it gets silently clobbered.
 
 6. **File → Open** → `learn/continuity_tester/continuity_tester.ino`
 7. Click **Verify** (✓) — compiles without uploading. Always a good first check.
-8. Click **Upload** (→). Watch the progress bar; it ends with the board resetting.
+8. Click **Upload** (**→**) — the right-arrow, **not** the 🐞 bug icon. (The bug is
+   *Debug*, which needs JTAG hardware this board doesn't have — see
+   [Don't press the Debug button](#dont-press-the-debug-button).) Watch the progress
+   bar; it ends with the board resetting.
 9. **Tools → Serial Monitor**, and set the dropdown to **115200 baud**.
 
 You should immediately see:
@@ -220,15 +230,22 @@ The three toolbar buttons, top-left:
 | **→** right arrow | **Upload** — compile *and* flash. **This is the one you want.** |
 | 🐞 bug | **Debug** — hardware JTAG debugging |
 
-**Debug will never work on this board.** It launches OpenOCD, which needs a physical
-**JTAG probe** (it goes hunting for an FTDI device and fails with `unable to open ftdi
-device`). The Feather ESP32 V2 has only a CH34x **USB-serial** bridge — fine for
-flashing and printing, but it can't do JTAG. The classic ESP32 also lacks the built-in
-USB-JTAG that the newer S3/C3 chips have. You'd need to buy an external probe.
+**Debug won't work on this board as-is.** It launches OpenOCD, which talks to a physical
+**JTAG probe** over a debug interface — and this board doesn't expose one.
 
-So on this board, **`Serial.println()` IS your debugger.** That's not a downgrade —
-printing values and watching them is how most embedded debugging genuinely gets done,
-and it's exactly why this sketch reports its state over serial.
+To be precise, because the distinction matters: the ESP32 *chip* does have JTAG (on
+GPIO12–15). What the **Feather ESP32 V2** lacks is any built-in **debug interface** to
+reach it — the board carries only a CH34x USB-serial bridge, which can flash and print
+but cannot do JTAG. (The classic ESP32 also lacks the built-in USB-JTAG that newer S3/C3
+chips have.) The `unable to open ftdi device` error is OpenOCD following the ESP32 core's
+default config, which expects an FTDI-based adapter like the one on an ESP-WROVER-KIT.
+
+So debugging *is* possible — but only by buying an external JTAG probe and wiring it up.
+For this project, don't.
+
+Which means on this board, **`Serial.println()` IS your debugger.** That's not a
+consolation prize — printing values and watching them is how most embedded debugging
+genuinely gets done, and it's exactly why this sketch reports its state over serial.
 
 ---
 

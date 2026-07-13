@@ -40,6 +40,13 @@ Click OK.
 > identify the chip, then die with *"A fatal error occurred: The chip stopped
 > responding."* Dropping to 115200 fixes it. (Verified on this board — the failure
 > is the baud rate, not your wiring.)
+>
+> Set it **after** choosing the board — selecting the board resets this menu to 921600.
+
+> **Click Upload (→), not Debug (🐞).** The bug icon starts a JTAG debug session, which
+> needs an external probe this board has no interface for; it fails with `unable to open
+> ftdi device`. On this board `Serial.println()` is your debugger. See
+> [`../learn/README.md`](../learn/README.md#dont-press-the-debug-button).
 
 > That port is the board as currently detected. If it changes, it'll be the
 > `/dev/cu.usbserial-*` entry — not `/dev/cu.Bluetooth-*` or the others.

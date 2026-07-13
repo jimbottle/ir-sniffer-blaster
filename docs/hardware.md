@@ -54,8 +54,8 @@ classic dual-core ESP32, variant `esp32`):
 >
 > | Toolchain | Fix |
 > |---|---|
-> | ESPHome (`esphome run`) | Already applied — both configs set `platformio_options: upload_speed: 115200` |
-> | Arduino IDE | **Tools → Upload Speed → 115200** |
+> | ESPHome (`esphome run`) | Set `platformio_options: upload_speed: 115200` under `esphome:` in **every** config — including any new one you add. (Already set in the configs currently in this repo.) |
+> | Arduino IDE | **Tools → Upload Speed → 115200** (set it *after* choosing the board — picking the board resets this menu to its 921600 default) |
 > | `arduino-cli` | append `:UploadSpeed=115200` to the FQBN |
 
 ## The 5990 transceiver

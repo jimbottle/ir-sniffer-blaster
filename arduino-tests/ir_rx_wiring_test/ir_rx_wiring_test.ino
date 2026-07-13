@@ -73,33 +73,54 @@ int probeStable(int mode) {
 // We have not confirmed the 5990's output stage, so we DO NOT claim "not connected"
 // from this probe alone. We report it as undetermined and let the edge count decide.
 void reportConnection() {
-  int withPulldown = probeStable(INPUT_PULLDOWN);
-  int withPullup   = probeStable(INPUT_PULLUP);
+  int withPulldown = -1;
+  int withPullup   = -1;
+
+  // Retry a few times before giving up. An open-drain sensor sits near the logic
+  // threshold against our pull-down, so a marginal line can legitimately flap; one
+  // bad sample shouldn't force the user to hit the reset button.
+  for (int attempt = 1; attempt <= 3; attempt++) {
+    withPulldown = probeStable(INPUT_PULLDOWN);
+    withPullup   = probeStable(INPUT_PULLUP);
+    if (withPulldown >= 0 && withPullup >= 0) break;
+    Serial.print("    (unstable reading, retrying ");
+    Serial.print(attempt);
+    Serial.println("/3...)");
+    delay(250);
+  }
   pinMode(IR_RX_PIN, INPUT);          // restore plain input for the real test
 
   Serial.print("Static probe — pulldown/pullup reads: ");
-  Serial.print(withPulldown < 0 ? -1 : withPulldown);
+  Serial.print(withPulldown < 0 ? "?" : String(withPulldown));
   Serial.print("/");
-  Serial.println(withPullup < 0 ? -1 : withPullup);
+  Serial.println(withPullup < 0 ? "?" : String(withPullup));
 
   if (withPulldown < 0 || withPullup < 0) {
-    Serial.println(">>> UNSTABLE — the line was moving while we probed.");
-    Serial.println(">>> Make sure no remote is being pressed (and no bright/flickering");
-    Serial.println(">>> lamp is on the sensor), then reset the board to retry.");
+    Serial.println(">>> UNSTABLE — the line kept moving while we probed.");
+    Serial.println(">>> Make sure no remote is being pressed and no flickering lamp is");
+    Serial.println(">>> on the sensor, then press the board's RESET button to retry.");
+    Serial.println(">>> (You can ignore this and just press a remote — edges still count.)");
   } else if (withPulldown == HIGH && withPullup == HIGH) {
     Serial.println(">>> DRIVEN HIGH — something is actively holding GPIO14 high.");
     Serial.println(">>> The 5990 is connected and idle. This is correct.");
   } else if (withPulldown == LOW && withPullup == LOW) {
     Serial.println(">>> DRIVEN LOW — something is holding GPIO14 at ground.");
     Serial.println(">>> Suspect a short to GND, or a miswired lead.");
-  } else {
-    // pulldown=LOW, pullup=HIGH: the pin followed our internal resistors.
+  } else if (withPulldown == LOW && withPullup == HIGH) {
+    // The pin followed whichever internal resistor we enabled.
     Serial.println(">>> UNDETERMINED — the pin followed our internal resistors.");
     Serial.println(">>> That means EITHER (a) nothing is connected (floating), OR");
     Serial.println(">>> (b) the sensor IS connected but idles high through its own");
     Serial.println(">>> weak pull-up (open-drain output). A static read cannot tell");
     Serial.println(">>> these apart.");
     Serial.println(">>> ---> PRESS A REMOTE. Edges = connected. No edges = not connected.");
+  } else {
+    // pulldown=HIGH, pullup=LOW — the pin read the OPPOSITE of the resistor we
+    // applied, both times. That is not physically sensible for a passive line.
+    Serial.println(">>> CONTRADICTORY — the pin read the inverse of each resistor we");
+    Serial.println(">>> applied (high when pulled down, low when pulled up). That is not");
+    Serial.println(">>> a normal passive line. Check for a miswired/inverted lead, then");
+    Serial.println(">>> press RESET to retry. Press a remote — the edge count still rules.");
   }
 }
 
