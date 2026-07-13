@@ -13,6 +13,11 @@
  *   Probe B: a jumper in pin  GND  <- the ground reference
  *   Touch the free ends of the two jumpers together to simulate a closed circuit.
  *
+ *   NOTHING ELSE SHOULD BE ATTACHED. If the 5990 IR board is wired to this Feather,
+ *   unplug it: this sketch deliberately doesn't configure GPIO27, and an ESP32 pin
+ *   you never configure comes out of reset FLOATING — which can gate the 5990's IR
+ *   emitter on and leave it running for the whole session.
+ *
  * ---------------------------------------------------------------------------
  * SAFETY — READ THIS
  *

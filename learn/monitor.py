@@ -1,30 +1,42 @@
 #!/usr/bin/env python3
-"""Serial monitor that does NOT reset the ESP32.
+"""Serial monitor that doesn't reboot the ESP32 WHILE YOU'RE USING IT.
 
 WHY THIS EXISTS
 ---------------
-On the ESP32, the USB-serial chip's DTR and RTS control lines are wired to the
-chip's EN (reset) and GPIO0 (boot-mode) pins. That's the circuit that lets the
-Arduino IDE auto-reset the board to flash it without you pressing buttons.
+On the ESP32, the USB-serial chip's DTR and RTS lines are wired to the chip's EN
+(reset) and GPIO0 (boot-mode) pins. That's the circuit that lets the Arduino IDE
+auto-reset the board to flash it without you pressing buttons.
 
-The side effect: the Arduino IDE's Serial Monitor ASSERTS those lines. That leaves
-EN in a marginal state where ordinary electrical noise — like your hand bridging
-two probe wires — can tip it and REBOOT the chip mid-print. You get boot spam
-(`SPI_FAST_FLASH_BOOT`, `configsip:`, `clk_drv:`) shredding your output, and it
-looks like your circuit is broken when it is fine.
+The Arduino IDE's Serial Monitor drives those lines, and the side effect is that the
+board reboots *during use*. Measured on this board with the continuity tester running,
+using insulated leads (no skin on any conductor): touching the two probes together
+rebooted the chip mid-print through the IDE monitor, and did not reboot it once
+through this script.
 
-This script deasserts DTR and RTS and just reads. Verified: 10 probe touches,
-10 clean contact/break events, zero reboots — where the IDE monitor rebooted
-constantly on the same hardware.
+    10 probe touches -> 10 contacts, 10 breaks, 0 reboots.
+
+Same board, same wires, same sketch, same hand. The only variable was the serial
+program. This script holds DTR/RTS low and then leaves them alone.
+
+WHAT IT DOES *NOT* DO
+---------------------
+It does not avoid the reset when the port is FIRST OPENED. macOS asserts DTR on open
+no matter what we ask for, so the board reboots once as this script starts — verified.
+That one reset is harmless, and it's actually useful: it's what prints the fresh
+`=== Continuity Tester ===` banner you see straight away.
+
+The property that matters is the one above: no resets while you're probing.
 
 USAGE
 -----
     python3 learn/monitor.py                 # auto-detect the board
     python3 learn/monitor.py /dev/cu.xxxx    # or name the port
 
+Needs pyserial:  pip install pyserial
 Ctrl-C to quit. Close it before uploading — only one program can own the port.
 """
 
+import codecs
 import glob
 import sys
 import time
@@ -32,48 +44,78 @@ import time
 try:
     import serial
 except ImportError:
-    sys.exit("pyserial not installed.  pip install pyserial")
+    sys.exit("pyserial not installed.  Run:  pip install pyserial")
 
 BAUD = 115200
+USAGE = "usage: monitor.py [PORT]    (auto-detects /dev/cu.usbserial-* if omitted)"
 
 
 def find_port() -> str:
-    if len(sys.argv) > 1:
-        return sys.argv[1]
-    ports = glob.glob("/dev/cu.usbserial-*") + glob.glob("/dev/cu.usbmodem*")
+    args = [a for a in sys.argv[1:] if a not in ("-h", "--help")]
+    if any(a in ("-h", "--help") for a in sys.argv[1:]):
+        print(USAGE)
+        print(__doc__)
+        raise SystemExit(0)
+    if args:
+        return args[0]
+
+    ports = sorted(glob.glob("/dev/cu.usbserial-*") + glob.glob("/dev/cu.usbmodem*"))
     if not ports:
-        sys.exit("No board found. Plug it in, or pass the port explicitly.")
+        sys.exit("No board found. Plug it in, or name the port explicitly.\n" + USAGE)
+    if len(ports) > 1:
+        print("Multiple candidate ports found:", file=sys.stderr)
+        for p in ports:
+            print(f"  {p}", file=sys.stderr)
+        sys.exit("Name the one you want:  python3 learn/monitor.py <PORT>")
     return ports[0]
 
 
 def main() -> None:
     port = find_port()
+
+    # Request DTR/RTS low BEFORE opening rather than after, so we never walk the pair
+    # through a mismatched state. (macOS still asserts DTR at open, so the board does
+    # reboot once here — see the docstring. What this prevents is resets *during use*.)
+    ser = serial.Serial()
+    ser.port = port
+    ser.baudrate = BAUD
+    ser.timeout = 0.1
+    ser.dtr = False
+    ser.rts = False
+
     try:
-        ser = serial.Serial(port, BAUD, timeout=0.1)
+        ser.open()
     except Exception as exc:  # noqa: BLE001
         sys.exit(
             f"Could not open {port}: {exc}\n"
             "If it's busy, close the Arduino IDE Serial Monitor."
         )
 
-    # The whole point: leave the board's reset/boot lines alone.
-    ser.setDTR(False)
-    ser.setRTS(False)
-    time.sleep(0.2)
-    ser.reset_input_buffer()
+    print(f"--- {port} @ {BAUD}  (DTR/RTS held low — no resets while probing)")
+    print("--- The board reboots once as this opens; that's what prints the banner.")
+    print("--- Ctrl-C quits. Close this before uploading.\n")
 
-    print(f"--- {port} @ {BAUD} (DTR/RTS released — will not reset the board)")
-    print("--- Ctrl-C to quit\n")
+    # Decode incrementally: a multi-byte character (e.g. the em dash the sketch
+    # prints) can straddle two reads, and decoding each chunk separately would
+    # mangle it into a replacement char — garbled output, in the anti-garble tool.
+    decoder = codecs.getincrementaldecoder("utf-8")("replace")
+
     try:
         while True:
             data = ser.read(256)
             if data:
-                sys.stdout.write(data.decode("utf-8", "replace"))
+                sys.stdout.write(decoder.decode(data))
                 sys.stdout.flush()
     except KeyboardInterrupt:
         print("\n--- closed")
+    except serial.SerialException as exc:
+        print(f"\n--- lost the port: {exc}")
+        print("--- (board unplugged?)")
     finally:
-        ser.close()
+        try:
+            ser.close()
+        except Exception:  # noqa: BLE001
+            pass
 
 
 if __name__ == "__main__":

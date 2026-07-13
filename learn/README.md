@@ -203,7 +203,7 @@ conduct. Complete → LED on. Broken → LED off.
 | Symptom | Cause |
 |---|---|
 | `Waiting for gdb server to start...` / `unable to open ftdi device` | You clicked **Debug** (🐞), not **Upload** (**→**). Debug needs a JTAG probe this board doesn't have — see below. Click the **→** arrow. |
-| Board **reboots every time you touch the probes**; boot noise (`SPI_FAST_FLASH_BOOT`, `configsip:`) shredding your output; banner repeating | **The Arduino Serial Monitor is doing this, not your circuit.** Use `python3 learn/monitor.py` instead — see the section below. |
+| Board **reboots every time you touch the probes**; boot noise (`SPI_FAST_FLASH_BOOT`, `configsip:`) shredding your output; banner repeating | **The Arduino Serial Monitor is doing this, not your circuit.** Use `python3 learn/monitor.py` — see [The Arduino Serial Monitor reboots this board](#️-the-arduino-serial-monitor-reboots-this-board-when-you-touch-the-probes). |
 | Serial Monitor is blank | Baud rate isn't **115200** (bottom-right dropdown) |
 | Garbled characters (`�?xÿ`) | Same — wrong baud rate |
 | Upload: *"chip stopped responding"* | **Upload Speed isn't 115200.** See above. |
@@ -232,35 +232,53 @@ clk_drv:0     ��  � �  0   � �  �
 
 **your wiring and your code are fine. The Serial Monitor is rebooting your chip.**
 
-On the ESP32, the USB-serial chip's **DTR and RTS** lines are physically wired to the
-chip's **EN (reset)** and **GPIO0 (boot)** pins — that's the circuit that lets the IDE
-auto-reset the board to flash it. The Arduino Serial Monitor **asserts** those lines,
-leaving EN in a marginal state where ordinary electrical noise — such as your hand
-bridging two probe wires — is enough to tip it and **reset the chip mid-print**.
-
 Each reset re-runs `setup()`, and the `lastState = -1` sentinel forces one print. So you
 get: reboot → banner → one status line → reboot → ... forever. It looks completely broken.
 
-**This was measured, not guessed.** Same board, same wires, same sketch, same hand:
+**This was measured, not guessed.** Same board, same wires, same sketch, same hand,
+insulated leads (no skin on any conductor) — the *only* variable changed was the program
+reading the serial port:
 
 | Serial program | 10 probe touches |
 |---|---|
-| Arduino IDE Serial Monitor (asserts DTR/RTS) | constant reboots, garbled output |
-| `learn/monitor.py` (releases DTR/RTS) | **10 clean contacts, 10 breaks, 0 reboots** |
+| Arduino IDE Serial Monitor | constant reboots, garbled output |
+| `learn/monitor.py` (holds DTR/RTS low) | **10 clean contacts, 10 breaks, 0 reboots** |
+
+**Why:** on the ESP32, the USB-serial chip's **DTR** and **RTS** lines are wired to the
+chip's **EN (reset)** and **GPIO0 (boot)** pins — that's the circuit that lets the IDE
+auto-reset the board to flash it without you pressing buttons. The Arduino Serial Monitor
+drives those lines; `monitor.py` deliberately holds them low and leaves them alone. That
+difference is what the measurement above isolates. (The exact electrical path by which
+making the probe contact then tips EN isn't fully pinned down — but it is *not* your
+hands, and it is *not* your wiring.)
 
 **The fix — use the included monitor instead:**
 
 ```bash
+pip install pyserial          # one time
 python3 learn/monitor.py
 ```
 
-It releases DTR/RTS and just reads. Ctrl-C to quit; close it before uploading (only one
-program can own the port). Upload from the IDE as normal — it's only the *monitor* that
-causes this.
+Ctrl-C to quit. **Close it before uploading** — only one program can own the port. Keep
+using the Arduino IDE to *edit, verify and upload* exactly as before; it is only the
+**Serial Monitor** that's unusable on this board.
 
-(Same mechanism, opposite symptom: a tool that *holds* DTR/RTS asserted keeps the chip in
-reset and you get **no output at all**. That's also why the Serial Monitor must be closed
-before you upload.)
+One honest caveat: `monitor.py` **does** reboot the board once, as it opens the port —
+macOS asserts DTR on open no matter what we ask for. That single reset is harmless, and
+it's what prints the fresh `=== Continuity Tester ===` banner immediately. What it
+doesn't do is reset the chip *while you're probing*, which is the part that was breaking
+you.
+
+### Is it a *real* reset loop?
+
+Don't let the above train you to ignore every reboot. Tell them apart:
+
+- **Reboots only when you touch the probes / connect the monitor** → the Serial Monitor
+  issue above. Use `monitor.py`.
+- **Banner re-printing every second or two while you sit still and touch nothing** → that
+  is a **genuine** reset loop. Read the `rst:0x…` reason in the boot dump:
+  `BROWNOUT` (weak USB port/cable), `SW_CPU_RESET` (a crash in your code), or a probe
+  shorting a strapping pin. That one is a real fault — chase it.
 
 ### Don't press the Debug button
 
@@ -299,9 +317,10 @@ Small changes, each teaching one thing:
    understand *why* it's one character?)
 2. **Change the sense pin** to `33`. Move the jumper. It should just work — then try
    `34` and watch it break, and reread the input-only trap above.
-   ⚠️ **Don't use pin `27`** — on this board that's the wire that drives the 5990's IR
-   emitter. Setting it to `INPUT_PULLUP` would hold the emitter gate high and fire the
-   IR LED continuously.
+   ⚠️ **Don't use pin `27`.** On this Feather that pin drives the 5990's IR emitter. You
+   should have the IR board unplugged (see the note at the top) — but if it *is* still
+   attached, `INPUT_PULLUP` on 27 would hold the emitter's gate high and run the IR LEDs
+   continuously.
 3. **Blink instead of solid**: on continuity, blink the LED rather than holding it on.
    Now you need a variable that remembers time — meet `millis()`.
 4. **Add a beep counter**: print how many times continuity was made. This teaches

@@ -83,10 +83,12 @@ void reportConnection() {
     withPulldown = probeStable(INPUT_PULLDOWN);
     withPullup   = probeStable(INPUT_PULLUP);
     if (withPulldown >= 0 && withPullup >= 0) break;
-    Serial.print("    (unstable reading, retrying ");
-    Serial.print(attempt);
-    Serial.println("/3...)");
-    delay(250);
+    if (attempt < 3) {                       // only announce a retry that will happen
+      Serial.print("    (attempt ");
+      Serial.print(attempt);
+      Serial.println("/3 unstable, retrying...)");
+      delay(250);
+    }
   }
   pinMode(IR_RX_PIN, INPUT);          // restore plain input for the real test
 

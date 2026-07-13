@@ -119,6 +119,12 @@ capture in [`../captured-codes/`](../captured-codes/).
 ## Gotchas
 
 - **Serial Monitor must be 115200 baud.** At the wrong rate you get garbage or nothing.
+- **Board rebooting / boot noise (`SPI_FAST_FLASH_BOOT`, `configsip:`) shredding your
+  output?** The Arduino Serial Monitor drives DTR/RTS, which are wired to the ESP32's
+  EN (reset) and GPIO0 (boot) pins, and can reset the chip mid-print. Use
+  `python3 learn/monitor.py` instead — it holds those lines low. Measured on this board:
+  the IDE monitor rebooted constantly where `monitor.py` had zero reboots. See
+  [`../learn/README.md`](../learn/README.md).
 - **Upload fails / port busy?** Close the Serial Monitor, then Upload. Only one thing
   can own the port at a time — this also applies to `esphome logs`.
 - **Don't set `inverted`/pull-ups on the RX pin.** The 5990's output is already
