@@ -203,6 +203,7 @@ conduct. Complete → LED on. Broken → LED off.
 | Symptom | Cause |
 |---|---|
 | `Waiting for gdb server to start...` / `unable to open ftdi device` | You clicked **Debug** (🐞), not **Upload** (**→**). Debug needs a JTAG probe this board doesn't have — see below. Click the **→** arrow. |
+| Boot noise (`SPI_FAST_FLASH_BOOT`, `configsip:`, `clk_drv:`) mixed into your output, lines chopped mid-sentence, the banner repeating | **Normal ESP32 behavior — not a fault.** See "The Serial Monitor resets the board" below. |
 | Serial Monitor is blank | Baud rate isn't **115200** (bottom-right dropdown) |
 | Garbled characters (`�?xÿ`) | Same — wrong baud rate |
 | Upload: *"chip stopped responding"* | **Upload Speed isn't 115200.** See above. |
@@ -216,6 +217,37 @@ That input-only one is the classic ESP32 trap, and no generic Arduino tutorial w
 about it — on a real Arduino Uno, every pin has a pull-up. Note it's the **GPIO number**
 that matters, not the `Ax` silkscreen label: those labels map to different GPIOs on
 different Feather revisions, so always check the number.
+
+### The Serial Monitor resets the board
+
+If your output looks like this — real text shredded by boot messages —
+
+```
+ff]
+        — circuit is BROKEN    (pin 32 sits HIGH)  [LED oPI_FAST_FLASH_BOOT)
+configsip: 271414342, SPIWP:0xee
+clk_drv:0     ��  � �  0   � �  �
+```
+
+**that is not a bug, and your wiring is probably fine.**
+
+On an ESP32, the serial port's **DTR and RTS** control lines are wired to the chip's
+**reset** and **boot-mode** pins. That's the trick that lets the IDE auto-reset the board
+to flash it without you pressing any buttons. The side effect: **opening the Serial
+Monitor reboots the chip.** Each reconnect dumps ROM boot noise (`SPI_FAST_FLASH_BOOT`,
+`configsip:`, `clk_drv:`) into the window, often chopping your program's output
+mid-sentence.
+
+And because `lastState = -1` forces one print at startup, every reboot re-prints the
+banner plus a single `open` line — so you see the same line over and over and assume it's
+stuck.
+
+What to do: **ignore the boot noise.** Scroll past it and read the lines *after* the
+banner. Your program's output is in there. If you want a clean read, press the board's
+**RESET** button once with the monitor already open, then watch from the fresh banner.
+
+(Same mechanism, opposite symptom: a serial tool that *holds* DTR/RTS asserted will hold
+the chip in reset, and you'll get **no output at all**.)
 
 ### Don't press the Debug button
 
