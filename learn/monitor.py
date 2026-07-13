@@ -38,6 +38,7 @@ Ctrl-C to quit. Close it before uploading — only one program can own the port.
 
 import codecs
 import glob
+import os
 import sys
 
 try:
@@ -50,28 +51,34 @@ USAGE = ("usage: monitor.py [PORT]\n"
          "  auto-detects /dev/cu.usbserial-* or /dev/cu.usbmodem* if omitted")
 
 
-def find_port() -> str:
+def find_port(usage: str = USAGE, doc: str | None = None) -> str:
+    """Pick the serial port. Shared by monitor.py and verify.py.
+
+    `usage`/`doc` are passed in so the messages name the tool the user actually
+    invoked, rather than always saying "monitor.py".
+    """
+    me = os.path.basename(sys.argv[0]) or "monitor.py"
     argv = sys.argv[1:]
     if any(a in ("-h", "--help") for a in argv):
-        print(USAGE)
-        print(__doc__)
+        print(usage)
+        print(doc or __doc__)
         raise SystemExit(0)
     # Anything else starting with '-' is a flag we don't support. Don't silently
     # treat it as a port path and fail with a confusing "Could not open --baud".
     unknown = [a for a in argv if a.startswith("-")]
     if unknown:
-        sys.exit(f"unknown option: {unknown[0]}\n{USAGE}")
+        sys.exit(f"unknown option: {unknown[0]}\n{usage}")
     if argv:
         return argv[0]
 
     ports = sorted(glob.glob("/dev/cu.usbserial-*") + glob.glob("/dev/cu.usbmodem*"))
     if not ports:
-        sys.exit("No board found. Plug it in, or name the port explicitly.\n" + USAGE)
+        sys.exit("No board found. Plug it in, or name the port explicitly.\n" + usage)
     if len(ports) > 1:
         print("Multiple candidate ports found:", file=sys.stderr)
-        for p in ports:
-            print(f"  {p}", file=sys.stderr)
-        sys.exit("Name the one you want:  python3 learn/monitor.py <PORT>")
+        for prt in ports:
+            print(f"  {prt}", file=sys.stderr)
+        sys.exit(f"Name the one you want:  python3 {me} <PORT>")
     return ports[0]
 
 

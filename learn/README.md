@@ -194,8 +194,12 @@ colorful NeoPixel. Right now it should be **off**.
 
 | | Serial Monitor | Red LED |
 |---|---|---|
-| Probes apart | `open        circuit BROKEN     pin32=HIGH   LED=off   contacts=1` | off |
+| Probes apart (at rest) | `open        circuit BROKEN     pin32=HIGH   LED=off   contacts=0` | off |
 | **Probes touching** | `CONTINUITY  circuit COMPLETE   pin32=LOW    LED=ON    contacts=1` | **on** |
+| Probes apart again | `open        circuit BROKEN     pin32=HIGH   LED=off   contacts=1` | off |
+
+`contacts` only increments when contact is **made**, so it stays at 0 until your first
+touch, then holds its value while the probes are apart.
 
 Separate them and it flips back. That's your proof: you're reading the physical world
 and reacting to it. Now touch the probes to the two ends of a wire, a paperclip, a
