@@ -195,6 +195,7 @@ conduct. Complete → LED on. Broken → LED off.
 
 | Symptom | Cause |
 |---|---|
+| `Waiting for gdb server to start...` / `unable to open ftdi device` | You clicked **Debug** (🐞), not **Upload** (**→**). Debug needs a JTAG probe this board doesn't have — see below. Click the **→** arrow. |
 | Serial Monitor is blank | Baud rate isn't **115200** (bottom-right dropdown) |
 | Garbled characters (`�?xÿ`) | Same — wrong baud rate |
 | Upload: *"chip stopped responding"* | **Upload Speed isn't 115200.** See above. |
@@ -204,10 +205,30 @@ conduct. Complete → LED on. Broken → LED off.
 | Always says open, even with probes touching | Probe B isn't actually in GND; or a jumper isn't seated. |
 | Reading flickers randomly | You picked an **input-only** pin: **GPIO 34, 35, 36, 37, 38, 39** have **NO internal pull-up** at all. `INPUT_PULLUP` silently does nothing there and the pin floats. **Use pin 32.** |
 
-That last one is the classic ESP32 trap, and no generic Arduino tutorial warns you about
-it — on a real Arduino Uno, every pin has a pull-up. Note it's the **GPIO number** that
-matters, not the `Ax` silkscreen label: those labels map to different GPIOs on different
-Feather revisions, so always check the number.
+That input-only one is the classic ESP32 trap, and no generic Arduino tutorial warns you
+about it — on a real Arduino Uno, every pin has a pull-up. Note it's the **GPIO number**
+that matters, not the `Ax` silkscreen label: those labels map to different GPIOs on
+different Feather revisions, so always check the number.
+
+### Don't press the Debug button
+
+The three toolbar buttons, top-left:
+
+| Button | What it does |
+|---|---|
+| **✓** checkmark | **Verify** — compile only, don't touch the board |
+| **→** right arrow | **Upload** — compile *and* flash. **This is the one you want.** |
+| 🐞 bug | **Debug** — hardware JTAG debugging |
+
+**Debug will never work on this board.** It launches OpenOCD, which needs a physical
+**JTAG probe** (it goes hunting for an FTDI device and fails with `unable to open ftdi
+device`). The Feather ESP32 V2 has only a CH34x **USB-serial** bridge — fine for
+flashing and printing, but it can't do JTAG. The classic ESP32 also lacks the built-in
+USB-JTAG that the newer S3/C3 chips have. You'd need to buy an external probe.
+
+So on this board, **`Serial.println()` IS your debugger.** That's not a downgrade —
+printing values and watching them is how most embedded debugging genuinely gets done,
+and it's exactly why this sketch reports its state over serial.
 
 ---
 
