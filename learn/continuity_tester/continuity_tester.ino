@@ -1,143 +1,156 @@
 /*
- * CONTINUITY TESTER — a go/no-go circuit checker.
+ * CONTINUITY TESTER - a go/no-go circuit checker.
  * Board: Adafruit Feather ESP32 V2.  No external components needed.
  *
  * ---------------------------------------------------------------------------
  * WHAT THIS DOES
  *   Touch the two probe leads across a wire, fuse, switch, or solder joint.
- *     - LED on  + "CONTINUITY"  -> the circuit is COMPLETE (current can flow)
- *     - LED off + "OPEN"        -> the circuit is BROKEN
+ *     - LED on  + "CONTINUITY" -> the circuit is COMPLETE (current can flow)
+ *     - LED off + "open"       -> the circuit is BROKEN
  *
  * WIRING (two jumper wires, nothing else)
  *   Probe A: a jumper in pin  32   <- the "sense" pin
  *   Probe B: a jumper in pin  GND  <- the ground reference
- *   Touch the free ends of the two jumpers together to simulate a closed circuit.
+ *   Touch the free ends of the two jumpers together to test.
  *
- *   NOTHING ELSE SHOULD BE ATTACHED. If the 5990 IR board is wired to this Feather,
- *   unplug it: this sketch deliberately doesn't configure GPIO27, and an ESP32 pin
- *   you never configure comes out of reset FLOATING — which can gate the 5990's IR
- *   emitter on and leave it running for the whole session.
+ *   NOTHING ELSE SHOULD BE ATTACHED. If the 5990 IR board is wired to this
+ *   Feather, unplug it: this sketch does not configure GPIO27, and an ESP32 pin
+ *   you never configure comes out of reset FLOATING, which can gate the 5990's
+ *   IR emitter on for the whole session.
  *
  * ---------------------------------------------------------------------------
- * SAFETY — READ THIS
+ * READING THE SERIAL MONITOR   (Tools > Serial Monitor, set baud to 115200)
+ *
+ * This sketch prints a HEARTBEAT once a second, always, even when nothing is
+ * happening. So:
+ *
+ *   - Lines ticking by  => the board is alive and the monitor is working.
+ *   - Total silence     => something IS wrong (wrong baud, no upload, dead board).
+ *
+ * That's deliberate. The old version printed only when the state changed, so a
+ * working board looked identical to a dead one.
+ *
+ * At boot it also prints WHY it last reset. If you see resets you didn't ask for,
+ * that line names the culprit instead of leaving you guessing.
+ *
+ * Output is plain ASCII on purpose - fancy dashes turn into mojibake at the wrong
+ * baud rate or across a dropped byte.
+ *
+ * ---------------------------------------------------------------------------
+ * SAFETY - READ THIS
  *
  * 1. ONLY test UNPOWERED circuits.
  *    This probes with the ESP32's own 3.3V logic. If you touch a probe to
  *    something that has its own voltage on it (a battery, a plugged-in board),
  *    you inject that voltage straight into the GPIO pin. ESP32 pins are NOT
  *    5V tolerant (~3.6V max) and you can destroy the pin or the chip.
- *    Disconnect power from whatever you're testing. Every time.
  *
- * 2. NEVER test continuity by driving one pin HIGH and another LOW and
- *    shorting them together. That connects the chip's internal power driver
- *    straight to its ground driver with nothing to limit the current, and can
- *    physically damage the output drivers. This sketch never does that: the
- *    sense pin is an INPUT, and the other lead goes to the real GND pin.
- *    (If you ever need a second GPIO as a ground reference, it must be
- *    OUTPUT and driven LOW — never HIGH.)
+ * 2. NEVER test continuity by driving one pin HIGH and another LOW and shorting
+ *    them together. That ties the chip's internal power driver straight to its
+ *    ground driver with nothing to limit the current. This sketch never does
+ *    that: the sense pin is an INPUT, and the other lead goes to a real GND pin.
  * ---------------------------------------------------------------------------
  */
 
-// ---- Pin choices -----------------------------------------------------------
-//
+#include "esp_system.h"
+
 // Why pin 32? Two reasons, both ESP32-specific:
 //
 //   * It has a usable internal pull-up. GPIO 34, 35, 36, 37, 38 and 39 are
-//     INPUT-ONLY on the ESP32 and have NO internal pull-up at all — INPUT_PULLUP
-//     silently does nothing there, the pin floats, and this sketch would read
-//     garbage. (Go by GPIO NUMBER, not the silkscreen label: the "Ax" labels map
-//     to different GPIOs on different Feather revisions.)
+//     INPUT-ONLY and have NO internal pull-up at all - INPUT_PULLUP silently does
+//     nothing there, the pin floats, and this sketch would read garbage. Go by
+//     GPIO NUMBER, not the "Ax" silkscreen label (those move between revisions).
 //
 //   * It isn't a "strapping" pin (0, 2, 5, 12, 15). The chip reads those at boot
-//     to decide how to start up, so holding one low with a probe could stop the
-//     board booting.
+//     to decide how to start, so holding one low with a probe could stop it booting.
 const int SENSE_PIN = 32;
 
-// LED_BUILTIN is defined by the board package — on this Feather it's GPIO13, the
-// small RED LED (not the NeoPixel). Using the name instead of "13" means the sketch
-// would still work if you moved it to a different board.
+// LED_BUILTIN on this Feather is GPIO13: the small RED led (not the NeoPixel).
 const int LED_PIN = LED_BUILTIN;
 
-// Remembers what we saw last time around, so we only print when something actually
-// changes instead of flooding the Serial Monitor 20x a second.
-//
-// -1 is a deliberate sentinel: digitalRead() can only ever return 0 or 1, so the
-// FIRST comparison in loop() is guaranteed to differ. That forces exactly one print
-// on startup, so you see the initial state instead of a blank screen.
-int lastState = -1;
+const unsigned long HEARTBEAT_MS = 1000;
+
+int lastState = -1;              // -1 = nothing read yet, so the first pass always prints
+unsigned long contacts = 0;      // how many times contact has been made
+unsigned long lastBeat = 0;
+
+// Ask the chip why it last restarted. If the board reboots while you're probing,
+// this tells you what actually happened instead of leaving you to guess.
+const char* resetReason() {
+  switch (esp_reset_reason()) {
+    case ESP_RST_POWERON:   return "POWERON (power applied, or EN/reset pulled low)";
+    case ESP_RST_EXT:       return "EXTERNAL reset pin";
+    case ESP_RST_SW:        return "SOFTWARE restart";
+    case ESP_RST_PANIC:     return "PANIC - the sketch crashed";
+    case ESP_RST_BROWNOUT:  return "BROWNOUT - supply voltage sagged (weak USB/cable)";
+    case ESP_RST_INT_WDT:   return "WATCHDOG (interrupt)";
+    case ESP_RST_TASK_WDT:  return "WATCHDOG (task)";
+    case ESP_RST_WDT:       return "WATCHDOG";
+    case ESP_RST_DEEPSLEEP: return "wake from deep sleep";
+    default:                return "UNKNOWN";
+  }
+}
+
+void report(int state) {
+  // digitalRead gives HIGH (~3.3V) or LOW (~0V).
+  //
+  // The internal pull-up holds the pin HIGH by default, so:
+  //   LOW  = something connected the pin to GND -> circuit COMPLETE
+  //   HIGH = nothing did                        -> circuit OPEN
+  //
+  // Note the inversion: a COMPLETED circuit reads LOW. It reads LOW *because*
+  // completing it is what drags the voltage DOWN to ground.
+  if (state == LOW) {
+    Serial.print("[CONTINUITY] circuit COMPLETE  pin32=LOW   LED=ON   contacts=");
+    Serial.println(contacts);
+  } else {
+    Serial.print("[   open   ] circuit BROKEN    pin32=HIGH  LED=off  contacts=");
+    Serial.println(contacts);
+  }
+}
 
 void setup() {
-  // setup() runs ONCE, right after the board powers up or resets.
-  // It's where you configure things.
+  Serial.begin(115200);
+  delay(500);                       // let USB serial come up
 
-  Serial.begin(115200);   // open the USB serial link at 115200 bits/sec.
-                          // The Serial Monitor MUST be set to this same number.
-  delay(500);             // give the USB connection a moment to come up
-
-  // pinMode() tells the chip how to use a pin.
-  //
-  // INPUT_PULLUP does two things at once:
-  //   1. makes the pin an input (we read it, we don't drive it), and
-  //   2. switches on a resistor INSIDE the chip that gently ties the pin up
-  //      to 3.3V.
-  //
-  // That internal resistor is the whole trick. With nothing connected, the pin
-  // has no other influence, so the resistor wins and the pin sits at 3.3V =
-  // HIGH. When you complete a circuit from the pin to GND, you give the voltage
-  // a much easier path to 0V than through that weak resistor, so the pin gets
-  // dragged down to 0V = LOW.
-  //
-  // This is why you need NO external parts: the pull-up resistor is already
-  // inside the microcontroller.
+  // INPUT_PULLUP = make it an input AND switch on a resistor inside the chip that
+  // gently ties the pin to 3.3V. That internal resistor is the whole trick, and it
+  // is why this needs no external parts.
   pinMode(SENSE_PIN, INPUT_PULLUP);
-
-  // OUTPUT means we drive this pin: we set its voltage, we don't read it.
   pinMode(LED_PIN, OUTPUT);
 
   Serial.println();
-  Serial.println("=== Continuity Tester ===");
-  Serial.println("Probe A = pin 32   Probe B = GND");
-  Serial.println("Touch the probes together (or across a wire) to test.");
-  Serial.println("Only test circuits with the power OFF.");
-  Serial.println();
+  Serial.println("========================================");
+  Serial.println(" Continuity Tester");
+  Serial.println(" Probe A = pin 32    Probe B = GND");
+  Serial.print(  " Last reset: ");
+  Serial.println(resetReason());
+  Serial.println(" Heartbeat prints every 1s: if lines are");
+  Serial.println(" ticking, the board and monitor are OK.");
+  Serial.println(" Only test circuits with the power OFF.");
+  Serial.println("========================================");
 }
 
 void loop() {
-  // loop() runs over and over, forever, as fast as it can, for as long as the
-  // board has power. This is where the actual work happens.
-
-  // digitalRead() looks at the pin's voltage and gives back one of two values:
-  //   HIGH -> the pin is near 3.3V
-  //   LOW  -> the pin is near 0V
   int state = digitalRead(SENSE_PIN);
 
-  // Here's the logic that makes this a continuity tester.
-  //
-  // Remember the pull-up is holding the pin HIGH by default. So:
-  //   LOW  means something connected our pin to GND  -> circuit COMPLETE
-  //   HIGH means nothing did                         -> circuit OPEN
-  //
-  // Note it's "backwards" from what you'd first guess: a COMPLETED circuit
-  // reads LOW. That inversion trips up most beginners. It reads LOW *because*
-  // completing the circuit is what pulls the voltage DOWN to ground.
-  bool continuity = (state == LOW);
+  digitalWrite(LED_PIN, (state == LOW) ? HIGH : LOW);
 
-  // digitalWrite() sets an output pin's voltage. HIGH lights this LED.
-  digitalWrite(LED_PIN, continuity ? HIGH : LOW);
-
-  // Only print when the reading CHANGES. Without this guard we'd print
-  // hundreds of identical lines per second and you couldn't read anything.
+  // Print immediately on a change - this is the event you care about.
   if (state != lastState) {
-    if (continuity) {
-      Serial.println("*** CONTINUITY  — circuit is COMPLETE  (pin 32 pulled LOW)  [LED ON]");
-    } else {
-      Serial.println("    open        — circuit is BROKEN    (pin 32 sits HIGH)  [LED off]");
-    }
+    if (state == LOW) contacts++;   // count each new contact
+    Serial.print(">>> CHANGE  ");
+    report(state);
     lastState = state;
+    lastBeat = millis();            // don't also beat right after a change
   }
 
-  // A short pause. Without it we'd read the pin millions of times a second for
-  // no benefit. 50ms is 20 checks per second — instant to a human, and it also
-  // smooths over the tiny electrical "bounce" you get as metal probes touch.
-  delay(50);
+  // ...and print a heartbeat regardless, so silence always means something is wrong.
+  if (millis() - lastBeat >= HEARTBEAT_MS) {
+    Serial.print("    beat    ");
+    report(state);
+    lastBeat = millis();
+  }
+
+  delay(20);   // 50 reads/sec: instant to a human, and it rides over contact bounce
 }
