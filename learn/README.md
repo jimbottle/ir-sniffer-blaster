@@ -203,7 +203,7 @@ conduct. Complete → LED on. Broken → LED off.
 | Symptom | Cause |
 |---|---|
 | `Waiting for gdb server to start...` / `unable to open ftdi device` | You clicked **Debug** (🐞), not **Upload** (**→**). Debug needs a JTAG probe this board doesn't have — see below. Click the **→** arrow. |
-| Boot noise (`SPI_FAST_FLASH_BOOT`, `configsip:`, `clk_drv:`) mixed into your output, lines chopped mid-sentence, the banner repeating | **Normal ESP32 behavior — not a fault.** See "The Serial Monitor resets the board" below. |
+| Board **reboots every time you touch the probes**; boot noise (`SPI_FAST_FLASH_BOOT`, `configsip:`) shredding your output; banner repeating | **The Arduino Serial Monitor is doing this, not your circuit.** Use `python3 learn/monitor.py` instead — see the section below. |
 | Serial Monitor is blank | Baud rate isn't **115200** (bottom-right dropdown) |
 | Garbled characters (`�?xÿ`) | Same — wrong baud rate |
 | Upload: *"chip stopped responding"* | **Upload Speed isn't 115200.** See above. |
@@ -218,9 +218,10 @@ about it — on a real Arduino Uno, every pin has a pull-up. Note it's the **GPI
 that matters, not the `Ax` silkscreen label: those labels map to different GPIOs on
 different Feather revisions, so always check the number.
 
-### The Serial Monitor resets the board
+### ⚠️ The Arduino Serial Monitor reboots this board when you touch the probes
 
-If your output looks like this — real text shredded by boot messages —
+**This is the big one.** If your output looks like this — real text shredded by boot
+messages, every time you complete the circuit —
 
 ```
 ff]
@@ -229,25 +230,37 @@ configsip: 271414342, SPIWP:0xee
 clk_drv:0     ��  � �  0   � �  �
 ```
 
-**that is not a bug, and your wiring is probably fine.**
+**your wiring and your code are fine. The Serial Monitor is rebooting your chip.**
 
-On an ESP32, the serial port's **DTR and RTS** control lines are wired to the chip's
-**reset** and **boot-mode** pins. That's the trick that lets the IDE auto-reset the board
-to flash it without you pressing any buttons. The side effect: **opening the Serial
-Monitor reboots the chip.** Each reconnect dumps ROM boot noise (`SPI_FAST_FLASH_BOOT`,
-`configsip:`, `clk_drv:`) into the window, often chopping your program's output
-mid-sentence.
+On the ESP32, the USB-serial chip's **DTR and RTS** lines are physically wired to the
+chip's **EN (reset)** and **GPIO0 (boot)** pins — that's the circuit that lets the IDE
+auto-reset the board to flash it. The Arduino Serial Monitor **asserts** those lines,
+leaving EN in a marginal state where ordinary electrical noise — such as your hand
+bridging two probe wires — is enough to tip it and **reset the chip mid-print**.
 
-And because `lastState = -1` forces one print at startup, every reboot re-prints the
-banner plus a single `open` line — so you see the same line over and over and assume it's
-stuck.
+Each reset re-runs `setup()`, and the `lastState = -1` sentinel forces one print. So you
+get: reboot → banner → one status line → reboot → ... forever. It looks completely broken.
 
-What to do: **ignore the boot noise.** Scroll past it and read the lines *after* the
-banner. Your program's output is in there. If you want a clean read, press the board's
-**RESET** button once with the monitor already open, then watch from the fresh banner.
+**This was measured, not guessed.** Same board, same wires, same sketch, same hand:
 
-(Same mechanism, opposite symptom: a serial tool that *holds* DTR/RTS asserted will hold
-the chip in reset, and you'll get **no output at all**.)
+| Serial program | 10 probe touches |
+|---|---|
+| Arduino IDE Serial Monitor (asserts DTR/RTS) | constant reboots, garbled output |
+| `learn/monitor.py` (releases DTR/RTS) | **10 clean contacts, 10 breaks, 0 reboots** |
+
+**The fix — use the included monitor instead:**
+
+```bash
+python3 learn/monitor.py
+```
+
+It releases DTR/RTS and just reads. Ctrl-C to quit; close it before uploading (only one
+program can own the port). Upload from the IDE as normal — it's only the *monitor* that
+causes this.
+
+(Same mechanism, opposite symptom: a tool that *holds* DTR/RTS asserted keeps the chip in
+reset and you get **no output at all**. That's also why the Serial Monitor must be closed
+before you upload.)
 
 ### Don't press the Debug button
 
