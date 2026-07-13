@@ -25,12 +25,17 @@ anyone considering substitutions.
   `remote_receiver` / `remote_transmitter` components. ESPHome board key:
   `adafruit_feather_esp32_v2` (variant esp32). Arduino-cli FQBN equivalent:
   `esp32:esp32:adafruit_feather_esp32_v2`.
+- **5990 has an onboard N-channel FET driver**, so a 3.3V GPIO toggles the emitter
+  while the LEDs themselves pull from 5V for 10+ m range. No external transistor
+  needed.
+- **PCB-antenna board is fine here** — an IR blaster sits in the open with line of
+  sight to the gear, so an external antenna earns nothing in this placement.
 
-### Confirmed silicon (read off the actual board)
+## Confirmed silicon (read off the actual board)
 
-`esptool` reports the real hardware, which differs slightly from the original brief
-(which said "ESP32-WROOM" — that was wrong, though the practical implication is the
-same: classic dual-core ESP32, variant `esp32`):
+`esptool` reports the real hardware, which differs from the original brief (which
+said "ESP32-WROOM" — that was wrong, though the practical implication is the same:
+classic dual-core ESP32, variant `esp32`):
 
 | Property   | Value                                  |
 |------------|----------------------------------------|
@@ -39,11 +44,10 @@ same: classic dual-core ESP32, variant `esp32`):
 | Flash      | 8 MB (embedded)                        |
 | PSRAM      | 2 MB (embedded)                        |
 | USB serial | CH34x-class bridge (VID `0x1A86`); macOS drives it natively — no driver install needed |
-- **5990 has an onboard N-channel FET driver**, so a 3.3V GPIO toggles the emitter
-  while the LEDs themselves pull from 5V for 10+ m range. No external transistor
-  needed.
-- **PCB-antenna board is fine here** — an IR blaster sits in the open with line of
-  sight to the gear, so an external antenna earns nothing in this placement.
+
+> The CH34x bridge is unreliable at ESPHome/esptool's default 921600 upload speed —
+> flashing fails with "chip stopped responding". Use 115200 (Arduino IDE:
+> **Tools → Upload Speed → 115200**).
 
 ## The 5990 transceiver
 

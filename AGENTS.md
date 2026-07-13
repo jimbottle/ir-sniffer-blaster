@@ -21,6 +21,12 @@ unless explicitly asked — this repo is in documentation/prep mode.
 - **`ir-blaster-livingroom.yaml`** is the authoritative firmware spec — the single
   source of truth for pins, protocols, and services.
 - The brief's facts are distilled into `docs/` and `README.md`.
+- **Diagnostics (not the shipped firmware):** `ir-wiring-test.yaml` (ESPHome,
+  no-network receiver test) and `arduino-tests/` (Arduino IDE sketches: a
+  library-free wiring test and an IRremote decode test). These **duplicate** the
+  receiver pin/tuning from the authoritative config — if you change RX pin or
+  tuning there, mirror it into both, or the diagnostics silently test a config the
+  real firmware no longer uses.
 - **Intentional deviations from the original brief** (code-review driven, all
   reversible): the API block uses current `actions:`/`action:` syntax instead of
   the deprecated `services:`/`service:`; a fallback `ap:` + `captive_portal:` was

@@ -27,6 +27,11 @@ logger:
   level: DEBUG          # raw/decoded IR dumps appear here
 
 # IR RECEIVE (sniff) — green wire -> GPIO14
+#
+# NOTE: these receiver settings are duplicated from the authoritative firmware spec,
+# ir-blaster-livingroom.yaml. If you change the RX pin or the tuning values THERE,
+# mirror them here — otherwise this diagnostic silently tests a configuration the
+# real firmware no longer uses, which defeats the point of a wiring test.
 remote_receiver:
   pin:
     number: GPIO14
@@ -35,3 +40,13 @@ remote_receiver:
   tolerance: 25%
   idle: 25ms
   buffer_size: 2kb
+
+# IR TRANSMIT — white wire -> GPIO27.
+# Declared purely so ESPHome drives this pin as an output (idle low), holding the
+# emitter OFF. The 5990's emitter shares a board with its receiver: if GPIO27 were
+# left as a floating input it could fire the LEDs and flood our own demodulator,
+# faking the exact "constant garbage" symptom this test tells you to read as a
+# receiver fault. We never actually transmit here.
+remote_transmitter:
+  pin: GPIO27
+  carrier_duty_percent: 50%
