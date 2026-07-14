@@ -301,9 +301,20 @@ python3 learn/verify.py
 ```
 
 Touch the probes together and apart. It watches the stream and exits **PASS** once it has
-seen the banner, a contact made, a contact broken, the counter increment, and zero
-mojibake — or **FAIL** with the specific reason. Same thing you can confirm by eye in the
-Serial Monitor; this just makes it a pass/fail check.
+seen the sketch alive (the banner, *or* any recognised status line), a contact made, a
+contact broken, the counter increment, and zero mojibake — or **FAIL** with the specific
+reason. Same thing you can confirm by eye in the Serial Monitor; this just makes it a
+pass/fail check.
+
+It ignores ESP32 boot dumps (the reset when the port opens is expected), but a reboot
+*while you're probing* is reported. Its line parser is a pure state machine with tests:
+
+```bash
+python3 learn/test_verify.py     # no board, no dependencies
+```
+
+That exists because the parser was silently broken by output-format changes four times —
+it kept exiting with a confident verdict while being unable to detect anything at all.
 
 ### Is it a *real* reset loop?
 

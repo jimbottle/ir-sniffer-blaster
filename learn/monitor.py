@@ -36,6 +36,8 @@ Needs pyserial:  pip install pyserial
 Ctrl-C to quit. Close it before uploading — only one program can own the port.
 """
 
+from __future__ import annotations
+
 import codecs
 import glob
 import os
