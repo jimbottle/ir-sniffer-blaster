@@ -45,8 +45,6 @@ USAGE = ("usage: verify.py [PORT]\n"
 # binary junk; counting that as mojibake would accuse a perfectly good board of a
 # baud mismatch. Detecting the START is enough - we stay in "resyncing" until real
 # sketch output resumes.
-BOOT_MARKERS = ("rst:0x", "ets ", "SPI_FAST_FLASH_BOOT", "configsip:", "clk_drv:")
-
 MOJIBAKE = "�"
 
 
@@ -54,33 +52,43 @@ MOJIBAKE = "�"
 class State:
     alive: bool = False           # have we seen ANY line we recognise?
     banner_seen: bool = False
-    resyncing: bool = False       # currently inside a ROM boot dump
     skip_boot_line: bool = False  # setup() prints one status line; not a probe event
     made: int = 0
     broke: int = 0
-    reboots: int = 0
+    reboots: int = 0              # unexpected: a reset AFTER the sketch was streaming
+    raw_resets: int = 0          # every rst:0x seen, even before the sketch ever ran
     mojibake: int = 0
     counter_hi: int = 0
 
     @property
+    def trigger_proven(self) -> bool:
+        # One definition of "the trigger works", used by both the live loop's break
+        # condition and `ok`, so the tested and untested sites can't drift apart.
+        return self.made >= 1 and self.broke >= 1 and self.counter_hi >= 1
+
+    @property
     def ok(self) -> bool:
-        return (self.alive and self.made >= 1 and self.broke >= 1
-                and self.counter_hi >= 1 and self.mojibake == 0)
+        return self.alive and self.trigger_proven and self.mojibake == 0
 
 
 def feed(st: State, line: str) -> str | None:
     """Consume one line of serial output. Returns an event name, or None.
 
     Pure: all effects land in `st`. This is what test_verify.py exercises.
+
+    Mojibake is counted ONLY on lines this parser recognises as sketch output
+    (the banner, `CONTINUITY…`, `open…`). Those are the only lines whose content is
+    known to be pure ASCII, so a replacement char in one is genuine corruption.
+    Everything else — ROM boot dumps, framing noise at a reset — is ignored by
+    construction, with no assumption about what a reboot looks like or when its
+    garbage arrives.
     """
-    if any(m in line for m in BOOT_MARKERS):
-        # A reboot only counts as UNEXPECTED if the board was already streaming.
-        # At port-open time nothing recognisable has arrived yet (alive == False),
-        # so the expected open-time reset is not counted. Gating on `alive` rather
-        # than `banner_seen` also means the FIRST genuine mid-run reboot is counted
-        # on a host where the board doesn't reset when the port opens.
-        st.resyncing = True
-        if "rst:0x" in line and st.alive:
+    if "rst:0x" in line:
+        # Count every reset. `raw_resets` catches a power-on boot loop that never
+        # reaches the sketch; `reboots` is the narrower "reset while already
+        # streaming" — the open-time reset (alive still False) isn't counted there.
+        st.raw_resets += 1
+        if st.alive:
             st.reboots += 1
             return "REBOOT"
         return None
@@ -89,7 +97,7 @@ def feed(st: State, line: str) -> str | None:
         first = not st.banner_seen
         st.banner_seen = True
         st.alive = True
-        st.resyncing = False
+        st.mojibake += line.count(MOJIBAKE)
         # Re-arm on EVERY banner: a mid-run reboot re-runs setup(), which prints
         # another status line. Without this it would be counted as a probe event -
         # the one fault this tool exists to catch would corrupt its own counts.
@@ -98,25 +106,15 @@ def feed(st: State, line: str) -> str | None:
 
     is_made = line.startswith("CONTINUITY")
     is_broke = line.startswith("open")
-    recognised = is_made or is_broke
+    if not (is_made or is_broke):
+        return None    # not trusted sketch output -> ignore entirely (incl. its bytes)
 
-    if recognised:
-        st.resyncing = False       # real sketch output resumed
-        st.alive = True
-
-    # Count mojibake only on real sketch output: alive, and not mid-boot-dump.
-    # Both gates matter. Without `alive`, the pre-banner dump is counted; without
-    # `resyncing`, a POST-reboot dump is counted - and either one FAILs a board
-    # whose baud is provably fine, which is the exact opposite of the diagnosis.
-    if st.alive and not st.resyncing:
-        st.mojibake += line.count(MOJIBAKE)
+    st.alive = True
+    st.mojibake += line.count(MOJIBAKE)   # known-ASCII line -> any junk here is real
 
     m = re.search(r"contacts=(\d+)", line)
     if m:
         st.counter_hi = max(st.counter_hi, int(m.group(1)))
-
-    if not recognised:
-        return None
 
     if st.skip_boot_line:
         st.skip_boot_line = False
@@ -179,11 +177,14 @@ def main() -> None:
                     print(f"  [{t:5.1f}s] CONTACT MADE    -> {line.strip()}")
                 elif event == "BROKE":
                     print(f"  [{t:5.1f}s] contact broken  -> {line.strip()}")
-            if st.made >= 1 and st.broke >= 1 and st.counter_hi >= 1:
+            if st.trigger_proven:
                 break
     except KeyboardInterrupt:
         print("\n(stopped)")
-    except Exception as exc:  # noqa: BLE001  (serial.SerialException and friends)
+    except (serial.SerialException, OSError) as exc:
+        # Only genuine I/O faults are dressed up as "lost the port". A bug in feed()
+        # or the formatting should raise a real traceback, not masquerade as a
+        # hardware problem and print a confident-but-wrong verdict underneath.
         print(f"\n--- lost the port: {exc}")
     finally:
         ser.close()
@@ -204,11 +205,18 @@ def main() -> None:
     else:
         print("\n  FAIL")
         if not st.alive:
-            print("   - Nothing recognisable arrived. Either the sketch isn't running, or")
-            print("     the baud is wrong (the board talks at 115200). Re-upload and check")
-            print("     Serial.begin(115200).")
+            if st.raw_resets >= 2:
+                print(f"   - The board reset {st.raw_resets} times and never reached the")
+                print("     sketch. That's a real boot loop: brownout / weak USB cable or")
+                print("     port, or a crash in setup(). Read the rst:0x reason in the")
+                print("     Serial Monitor.")
+            else:
+                print("   - Nothing recognisable arrived. Either the sketch isn't running,")
+                print("     or the baud is wrong (the board talks at 115200). Re-upload and")
+                print("     check Serial.begin(115200).")
         if st.mojibake:
-            print("   - Corrupted characters in real sketch output: baud mismatch.")
+            print("   - Corrupted bytes inside real sketch output -> a flaky USB cable /")
+            print("     adapter or electrical noise. The baud is fine (other lines decoded).")
         if st.made == 0 and st.alive:
             print("   - No contact detected: check one jumper is in pin 32 and one in GND,")
             print("     and that you touched the metal ends together.")

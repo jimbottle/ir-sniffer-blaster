@@ -35,7 +35,19 @@ BANNER_BLOCK = [
     " Continuity Tester",
     " Probe A = pin 32     Probe B = GND",
     " Last reset: POWERON (power applied, or EN/reset pulled low)",
+    " Only test circuits with the power OFF.",
     "=========================================",
+]
+
+# A reboot where the FIRST ROM line is itself garbled and does not start with a
+# clean marker - the reset happens while the UART is mid-frame. The old "classify
+# the boot dump" gate missed this; the current "only trust recognised lines" rule
+# ignores it by construction.
+GARBLED_BOOT = [
+    "�ts Jul 29 2019 12:21:46",   # 'ets...' with a mangled first byte
+    "�� rst:0x1 boot noise",
+    "configsip: 271414342",
+    "entry 0x4008059c",
 ]
 
 BOOT_STATE = "open        circuit BROKEN     pin32=HIGH   LED=off   contacts=0"
@@ -111,12 +123,39 @@ def main() -> None:
               st.reboots == 1, f"(got {st.reboots})"),
     ]
 
-    # 5. Real corruption AFTER sync is a genuine baud problem and must be caught.
-    print("\ngenuine corruption in sketch output:")
+    # 5. Real corruption AFTER sync is genuine bit-corruption and must be caught.
+    print("\ngenuine corruption in recognised sketch output:")
     st = run(BANNER_BLOCK + [BOOT_STATE, MADE_1, "CONTINUITY �� garbled", BROKE_1])
     results += [
-        check("mojibake in real output IS counted", st.mojibake > 0),
+        check("mojibake in a recognised line IS counted", st.mojibake > 0),
         check("FAILs", not st.ok),
+    ]
+
+    # 6. A reboot whose ROM dump is garbled from the first byte. The junk must NOT
+    #    be counted as mojibake - this is the exact ordering the previous gate missed.
+    print("\nmid-run reboot with a garbled boot dump:")
+    st = run(BANNER_BLOCK + [BOOT_STATE, MADE_1, BROKE_1]
+             + GARBLED_BOOT + BANNER_BLOCK + [BOOT_STATE])
+    results += [
+        check("garbled boot junk NOT counted as mojibake", st.mojibake == 0,
+              f"(got {st.mojibake})"),
+        check("the reboot is still counted", st.reboots == 1, f"(got {st.reboots})"),
+        check("still PASSes", st.ok),
+    ]
+
+    # 7. A power-on boot loop: resets forever, never reaches the sketch. The tool
+    #    must surface it (raw_resets) rather than blame the baud or the wiring.
+    print("\npower-on boot loop (never reaches the sketch):")
+    st = run(["rst:0x1 (POWERON_RESET)", "boot noise",
+              "rst:0xc (SW_CPU_RESET)", "more noise",
+              "rst:0x1 (POWERON_RESET)"])
+    results += [
+        check("FAILs", not st.ok),
+        check("not reported as alive", not st.alive),
+        check("raw resets counted (>=2) so the verdict can name a boot loop",
+              st.raw_resets >= 2, f"(got {st.raw_resets})"),
+        check("not miscounted as unexpected mid-stream reboots", st.reboots == 0,
+              f"(got {st.reboots})"),
     ]
 
     print(f"\n{sum(results)}/{len(results)} checks passed")

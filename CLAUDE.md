@@ -53,21 +53,50 @@ bd close <id>         # Complete work
 
 ## Build & Test
 
-_Add your build and test commands here_
-
 ```bash
-# Example:
-# npm install
-# npm test
+# --- Toolchain (once) ---
+uv venv && uv pip install -r requirements.txt   # esphome + pyserial, pinned
+
+# --- ESPHome firmware (the IR blaster) ---
+.venv/bin/esphome config ir-blaster-livingroom.yaml   # validate config (needs secrets.yaml)
+.venv/bin/esphome config ir-wiring-test.yaml          # no-network diagnostic config
+
+# --- Arduino sketches (compile-check against the real board definition) ---
+CLI="/Applications/Arduino IDE.app/Contents/Resources/app/lib/backend/resources/arduino-cli"
+FQBN="esp32:esp32:adafruit_feather_esp32_v2:UploadSpeed=115200"
+"$CLI" compile --fqbn "$FQBN" learn/continuity_tester
+"$CLI" compile --fqbn "$FQBN" arduino-tests/ir_rx_wiring_test
+"$CLI" compile --fqbn "$FQBN" arduino-tests/ir_rx_decode_test
+
+# --- Unit tests (no board, no deps, stock python3) ---
+python3 learn/test_verify.py    # verify.py's serial-line parser
 ```
+
+**Run `python3 learn/test_verify.py` whenever you change what a sketch prints.**
+`verify.py`'s parser greps for specific output strings and has been silently broken
+by format changes several times; the test is the guard.
 
 ## Architecture Overview
 
-_Add a brief overview of your project architecture_
+Two independent things share this repo and the same ESP32 Feather V2 board:
+
+1. **The IR sniffer/blaster** (the real project) — an ESPHome firmware
+   (`ir-blaster-livingroom.yaml`) that captures and replays IR. `ir-wiring-test.yaml`
+   is a network-free receiver diagnostic; `arduino-tests/` holds Arduino IDE
+   receiver-test sketches. See `README.md` and `docs/`.
+2. **`learn/`** — a standalone Arduino teaching project (a pull-up continuity tester)
+   plus host-side serial tools (`monitor.py`, `verify.py`) and their tests. Unrelated
+   to the firmware; it just borrows the board.
 
 ## Conventions & Patterns
 
-_Add your project-specific conventions here_
+- **Board:** ESPHome key `adafruit_feather_esp32_v2`; Arduino FQBN
+  `esp32:esp32:adafruit_feather_esp32_v2`. **Upload at 115200** — the CH34x USB bridge
+  fails at the default 921600.
+- **Serial is 115200**, and the ESP32 resets when the port opens (DTR/RTS → EN/GPIO0).
+- **Secrets:** `secrets.yaml` is git-ignored; only `secrets.yaml.example` is committed.
+- Host-side Python targets **stock macOS `python3` (3.9)** — use
+  `from __future__ import annotations`, not bare PEP 604 unions in runtime positions.
 
 <!-- BEGIN WYK CONVENTIONS v:1 -->
 ## wyk — planning & handoff over bd
