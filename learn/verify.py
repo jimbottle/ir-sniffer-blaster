@@ -41,10 +41,8 @@ BANNER = "Continuity Tester"
 USAGE = ("usage: verify.py [PORT]\n"
          "  auto-detects /dev/cu.usbserial-* or /dev/cu.usbmodem* if omitted")
 
-# Lines that mean "the ESP32 ROM is talking, not the sketch". A boot dump is full of
-# binary junk; counting that as mojibake would accuse a perfectly good board of a
-# baud mismatch. Detecting the START is enough - we stay in "resyncing" until real
-# sketch output resumes.
+# The Unicode replacement char: a decode failure on a known-ASCII sketch line.
+# (Why it's only counted on recognised lines is in the feed() docstring.)
 MOJIBAKE = "�"
 
 
