@@ -63,10 +63,11 @@ integration (adoption in progress), and the `send_raw_ir` service. Compiling / f
 - **`secrets.yaml` is git-ignored and must never be committed.** Template:
   `secrets.yaml.example`; generate the API key with `openssl rand -base64 32`.
 
-Bring-up ran against [`docs/validation.md`](docs/validation.md) (all acceptance criteria
-met on hardware; OTA and the `send_raw_ir` service configured but not yet fired
-end-to-end). Captured codes live in [`captured-codes/`](captured-codes/) — add new ones
-there as you capture them.
+Bring-up ran against [`docs/validation.md`](docs/validation.md): the **transmit path is
+proven** (captured code → `Fan Power` button → fan toggles, over the network), while the
+**ESPHome receiver dump, HA adoption, OTA, and `send_raw_ir` remain unconfirmed**.
+Captured codes live in [`captured-codes/`](captured-codes/) — add new ones there as you
+capture them.
 
 ---
 

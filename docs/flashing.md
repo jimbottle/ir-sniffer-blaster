@@ -38,8 +38,8 @@ are two ways to run ESPHome:
 
 ## Later updates (over the air)
 
-After the first successful flash, **USB is no longer needed** — the 4298 PSU just
-powers the board:
+Once OTA is working, USB is no longer needed — the 4298 PSU just powers the board, and
+updates go over the network:
 
 ```bash
 esphome run ir-blaster-livingroom.yaml
@@ -47,6 +47,10 @@ esphome run ir-blaster-livingroom.yaml
 ```
 
 OTA is gated by `ota_password` from `secrets.yaml`.
+
+> **Not yet exercised on this board.** Both flashes so far were over USB; the OTA path
+> (`ota:` block) is configured but hasn't been run. **Keep the USB data cable handy
+> until one network `esphome run` succeeds** — if OTA fails, USB is your fallback.
 
 ## Docker alternative
 
@@ -59,5 +63,5 @@ For USB flashing inside Docker you must pass the serial device through
 
 > **macOS note:** Docker Desktop runs in a VM and generally **cannot** pass
 > through a USB serial device, so the Docker route won't work for the *first*
-> (USB) flash on a Mac — use the native CLI (`esphome run`) for that. Docker is
-> fine for later **OTA** flashes, which go over the network.
+> (USB) flash on a Mac — use the native CLI (`esphome run`) for that. Docker would be
+> fine for later **OTA** flashes (network, no device passthrough) once OTA is working.
