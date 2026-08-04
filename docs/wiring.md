@@ -34,9 +34,14 @@ These pins match the config: `remote_transmitter` → GPIO27 (the emitter, green
 
 - **Power VIN from 3V, not 5V.** VIN is the logic-level reference for the receiver
   output, so it must match the ESP32's 3.3V logic. This trades some emitter range
-  for a pin-safe receiver line. If you specifically need 5V emitter range, power VIN
-  at 5V **and add a level shifter on the white/IRin line into GPIO14** — don't feed
-  5V straight into the GPIO.
+  for a pin-safe receiver line.
+- **Do not run this board's VIN at 5V with the 3.3V ESP32.** Because VIN also powers
+  the receiver, 5V puts ~5V on the white/IRin line the instant power is applied —
+  before any firmware runs — so a level shifter added "later" can't save the pin, and
+  even one wired at power-up must have its HV side on IRin and LV side on 3V/GPIO14
+  exactly right. If you genuinely need more range than 3V gives, drive a **separate
+  5V emitter** (e.g. Adafruit 5639) from its own 5V supply and keep the 5990 at 3V
+  for receive — don't push this board's VIN to 5V.
 - If a tinned wire is loose in a breadboard hole, **pinch/fold the tip** to fatten
   it. The breadboard's spring clips help.
 - **Wire to GPIOs, not the STEMMA QT port.** The 4045 cable is labeled "I2C

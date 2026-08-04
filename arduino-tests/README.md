@@ -76,7 +76,7 @@ connected one.
 | `DRIVEN HIGH — the 5990 is connected and idle`, then `IR DETECTED! edges=…` on each press | ✅ **Receiver wiring is good.** Move to Stage 2. |
 | `FLOATING — nothing is driving GPIO14` (`follows pulldown/pullup: 0/1`) | ❌ **5990 not connected.** White wire (IRin) not seated, or the sensor has no power. Check white→GPIO14, red→3V, black→GND. |
 | `DRIVEN LOW — something is holding GPIO14 low` | ❌ Short to GND, or a miswired lead. |
-| `DRIVEN HIGH` but no edges when you press a remote | ❌ Green wire on the wrong pin, or the remote is dead / not 38 kHz / not aimed at the sensor. |
+| `DRIVEN HIGH` but no edges when you press a remote | ❌ White wire (IRin) on the wrong pin, or the remote is dead / not 38 kHz / not aimed at the sensor. |
 | Edges reported continuously with no remote press | ❌ Noise on the line. (The sketch holds GPIO27 LOW so the 5990's own emitter can't be the cause.) |
 
 Stage 1 exercises the entire receive chain, so a pass here means the wiring is

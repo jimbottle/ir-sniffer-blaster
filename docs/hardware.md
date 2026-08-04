@@ -74,7 +74,9 @@ classic dual-core ESP32, variant `esp32`):
 - **Single VIN powers both the receiver and the LEDs, and VIN is the output logic
   level.** So VIN must match the MCU: for the 3.3V ESP32, wire VIN to **3V**, not 5V.
   Powering VIN at 5V drives the receiver output (white) to ~5V into a 3.3V GPIO —
-  over the ESP32's ~3.6V limit. 5V is only for genuinely 5V-logic MCUs (e.g. a
-  classic Uno), or with a level shifter on the receiver line.
+  over the ESP32's ~3.6V limit, at power-up before any firmware runs. 5V VIN is only
+  for genuinely 5V-logic MCUs (e.g. a classic Uno). For more emitter range on a 3.3V
+  MCU, use a separate 5V emitter rather than pushing this board's VIN to 5V — see
+  [`wiring.md`](wiring.md).
 - **Not I2C** despite the 4045 cable's "I2C STEMMA" label — do not use the STEMMA QT
   port.

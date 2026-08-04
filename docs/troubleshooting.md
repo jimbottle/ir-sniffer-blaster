@@ -22,8 +22,8 @@
   power only; the first flash needs a separate USB-C **data** cable.
 - **Power VIN (red) from 3V, not 5V.** On the 5990, VIN is the receiver output's
   logic level; 5V into the 3.3V GPIO14 can damage the ESP32. 3V trades emitter range
-  for safety. (For 5V range, add a level shifter on the white/IRin line — see
-  `wiring.md`.)
+  for safety. Don't run this board's VIN at 5V with a 3.3V MCU — see the range note
+  in [`wiring.md`](wiring.md) (use a separate 5V emitter instead).
 - **Breadboard is the least rugged link** for a permanent fixture. If a connection
   gets flaky over time, solder the four 4045 leads directly to the Feather. Nothing
   in the firmware changes.
