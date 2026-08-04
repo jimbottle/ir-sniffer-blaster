@@ -73,23 +73,14 @@ remote_transmitter:
   pin: GPIO27
   carrier_duty_percent: 50%
 
-# Example replay buttons — TEMPLATE ONLY, intentionally commented out.
-# These placeholder codes are NOT real captures; leaving them live would expose
-# pressable HA/web buttons that fire arbitrary IR at whatever is in line of sight.
-# After capturing real codes (see docs/capture-replay.md), uncomment and replace
-# the values, then re-flash over OTA.
-#
-# button:
-#   - platform: template
-#     name: "TV Power"
-#     on_press:
-#       - remote_transmitter.transmit_nec:    # use the protocol the log reports
-#           address: 0x20DF
-#           command: 0x10EF
-#
-#   - platform: template
-#     name: "TV Volume Up (raw example)"
-#     on_press:
-#       - remote_transmitter.transmit_raw:
-#           carrier_frequency: 38kHz
-#           code: [9000, -4500, 560, -560, 560, -1690, 560, -560]   # truncated sample
+# Replay buttons — each fires a captured raw code out the emitter (GPIO27).
+# Capture new codes with arduino-tests/ir_rx_decode_test (see docs/capture-replay.md
+# and captured-codes/), convert IRremote mark/space to ESPHome signed (+mark/-space),
+# and add a button here. This remote decodes as UNKNOWN protocol, so we use raw.
+button:
+  - platform: template
+    name: "Fan Power"                 # captured this session: hash 0xDA0AE878, verified toggling the fan
+    on_press:
+      - remote_transmitter.transmit_raw:
+          carrier_frequency: 38kHz
+          code: [1280, -420, 1230, -420, 430, -1270, 1230, -420, 1230, -420, 380, -1270, 380, -1270, 430, -1220, 430, -1270, 380, -1270, 380, -1270, 1230, -7120, 1230, -420, 1230, -420, 430, -1270, 1230, -420, 1230, -420, 380, -1270, 380, -1270, 430, -1220, 430, -1270, 380, -1270, 380, -1270, 1230]

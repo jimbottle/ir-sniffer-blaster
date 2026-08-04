@@ -54,7 +54,7 @@ int probeStable(int mode) {
     delay(2);
     if (digitalRead(IR_RX_PIN) != first) return -1;   // it moved: not stable
   }
-  return first;
+  return first;th
 }
 
 // Try to characterize what (if anything) is on GPIO14.
