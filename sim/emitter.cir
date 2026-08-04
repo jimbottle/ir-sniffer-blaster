@@ -1,0 +1,45 @@
+* ---------------------------------------------------------------------------
+* Adafruit 5990 IR emitter drive - ONE LED branch
+*
+* Purpose: quantify the emitter drive current vs VIN, to put a real number on
+* the "powering VIN at 3V (required for a 3.3V ESP32) cuts emitter range"
+* tradeoff documented in ../docs/wiring.md and ../docs/hardware.md.
+*
+* Topology (per Adafruit's design - the 5990 emitter reuses the 5639 High Power
+* IR LED Emitter): VIN -> series resistor -> 940nm IR LED -> N-channel FET -> GND.
+* The MCU drives the FET gate; when on, current flows through the LED.
+*
+* CALIBRATION / SCOPE: the exact BOM (R value, LED part, FET) is not published,
+* so R and the LED model here are FITTED to Adafruit's two stated operating
+* points (~100mA per LED at VIN=3V, ~200mA at VIN=5V - product page & forum).
+* This model therefore does not independently measure the board; its job is to
+* interpolate to 3.3V (which Adafruit does not publish) and confirm the physics
+* is self-consistent with Adafruit's figures.
+*
+* Run:  ngspice -b sim/emitter.cir
+*
+* Result (this fit):   VIN 3.0V -> ~106 mA    3.3V -> ~124 mA    5.0V -> ~229 mA
+*   => at the ESP32's 3.3V rail, ~0.55x the 5V drive current per LED.
+*   => range ~ sqrt(0.55) ~ 0.75x the 5V range (intensity ∝ I, range ∝ sqrt).
+*      If 5V gives Adafruit's "10+ m", 3.3V gives roughly 7-8 m - ample for a
+*      single-room blaster, while keeping the receiver line pin-safe.
+*
+* Sources:
+*   https://forums.adafruit.com/viewtopic.php?t=223942   (5V/3V current & range)
+*   https://www.adafruit.com/product/5990
+*   https://learn.adafruit.com/adafruit-infrared-ir-remote-transceiver/pinouts
+* ---------------------------------------------------------------------------
+
+V1  vin 0   DC 5
+R1  vin a   15.5        ; series resistor (fitted to Adafruit's currents)
+D1  a   k   IRLED       ; 940nm IR LED
+Rds k   0   0.12        ; N-FET on-resistance, fully driven (lumped)
+
+.model IRLED D(IS=3e-13 N=1.9 RS=0.35)   ; IR LED, Vf ~1.3-1.6V across 0.1-0.23A
+
+.control
+dc V1 3.0 5.0 0.1
+let iled = -i(V1)               ; supply current magnitude = LED current
+print v(vin) iled
+.endc
+.end

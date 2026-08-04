@@ -66,6 +66,7 @@ for the GUI route.
 | `captured-codes/`               | Record captured IR codes here                                    |
 | `arduino-tests/`                | Arduino IDE diagnostic sketches to verify the IR receiver wiring |
 | `ir-wiring-test.yaml`           | ESPHome no-network receiver test (alternative to `arduino-tests/`)|
+| `sim/`                          | ngspice emitter-drive check (quantifies the 3V-vs-5V range tradeoff)|
 | `AGENTS.md`                     | Orientation for AI agents / contributors                         |
 
 ## Key facts (read before changing the config)
