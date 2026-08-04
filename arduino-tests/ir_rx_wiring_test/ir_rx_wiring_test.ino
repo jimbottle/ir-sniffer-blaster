@@ -1,9 +1,9 @@
 // STAGE 1 — IR receiver WIRING test.  No libraries required.
 //
 // Board : Adafruit Feather ESP32 V2      Sensor: Adafruit 5990 IR transceiver
-// Green (IR data OUT, receiver -> MCU) -> GPIO14
-// White (IR data IN,  MCU -> emitter)  -> GPIO27   (held LOW here; emitter stays off)
-// Red   (V+)  -> USB pin (5V)     Black (GND) -> GND
+// White (IRin,  receiver output -> MCU) -> GPIO14
+// Green (IRout, MCU -> emitter drive)    -> GPIO27   (held LOW here; emitter stays off)
+// Red   (VIN) -> 3V  (NOT 5V: VIN is the receiver's logic level)   Black (GND) -> GND
 //
 // This does NOT decode IR. It answers one question: is the receiver wired and alive?
 //
@@ -27,14 +27,14 @@
 //
 // So: press a remote at the sensor. That is the real test.
 //   Edges appear    -> receive path works. Wiring is GOOD.
-//   No edges at all -> sensor not connected / unpowered / green wire not on GPIO14,
+//   No edges at all -> sensor not connected / unpowered / white wire not on GPIO14,
 //                      or the remote is dead / not 38 kHz / not aimed at the sensor.
 //   Edges with NO remote pressed -> noise on the line (the emitter can't be the
 //                      cause; we hold GPIO27 low).
 // ---------------------------------------------------------------------------
 
-const int IR_RX_PIN = 14;   // green — IR data OUT (receiver -> MCU)
-const int IR_TX_PIN = 27;   // white — IR data IN  (MCU -> emitter)
+const int IR_RX_PIN = 14;   // white (IRin)  — receiver output -> MCU
+const int IR_TX_PIN = 27;   // green (IRout) — MCU -> emitter drive
 
 volatile unsigned long edgeCount = 0;
 

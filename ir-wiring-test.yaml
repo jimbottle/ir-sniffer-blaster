@@ -9,8 +9,8 @@
 #   (already flashed?)  esphome logs ir-wiring-test.yaml
 #
 # Then point any remote at the 5990 and press buttons.
-#   - Decoded line and/or raw timing array  -> RX wiring is GOOD (green->GPIO14, power, GND all correct).
-#   - Total silence                         -> see docs/wiring.md; check green->GPIO14, red->USB(5V), black->GND.
+#   - Decoded line and/or raw timing array  -> RX wiring is GOOD (white->GPIO14, power, GND all correct).
+#   - Total silence                         -> see docs/wiring.md; check white->GPIO14, red->3V, black->GND.
 #   - Constant garbage with no button press -> floating/miswired data line.
 #
 # This is a throwaway test image. Flash ir-blaster-livingroom.yaml over it when done.
@@ -30,7 +30,7 @@ esp32:
 logger:
   level: DEBUG          # raw/decoded IR dumps appear here
 
-# IR RECEIVE (sniff) — green wire -> GPIO14
+# IR RECEIVE (sniff) — 5990 white wire (IRin, receiver output) -> GPIO14
 #
 # NOTE: these receiver settings are duplicated from the authoritative firmware spec,
 # ir-blaster-livingroom.yaml. If you change the RX pin or the tuning values THERE,
@@ -45,7 +45,7 @@ remote_receiver:
   idle: 25ms
   buffer_size: 2kb
 
-# IR TRANSMIT — white wire -> GPIO27.
+# IR TRANSMIT — 5990 green wire (IRout, emitter drive) -> GPIO27.
 # Declared purely so ESPHome drives this pin as an output (idle low), holding the
 # emitter OFF. The 5990's emitter shares a board with its receiver: if GPIO27 were
 # left as a floating input it could fire the LEDs and flood our own demodulator,

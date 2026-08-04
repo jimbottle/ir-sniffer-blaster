@@ -2,7 +2,7 @@
 // by Armin Joachimsmeyer:  Sketch > Include Library > Manage Libraries > "IRremote"
 //
 // Board : Adafruit Feather ESP32 V2      Sensor: Adafruit 5990 IR transceiver
-// Green (IR data OUT) -> GPIO14      White (IR data IN) -> GPIO27
+// White (IRin, receiver output) -> GPIO14      Green (IRout, emitter drive) -> GPIO27
 //
 // Prints the decoded protocol/address/command AND the raw timing array for every
 // button press. Serial Monitor @ 115200 baud.

@@ -8,20 +8,35 @@ pin.
 
 ## Connection table
 
-| 5990 lead (4045 color) | Function                          | Feather pin  |
-|------------------------|-----------------------------------|--------------|
-| **red** (V+)           | 5V power to emitter LEDs           | USB pin (5V) |
-| **black** (GND)        | ground                            | any GND      |
-| **white**              | IR data IN (MCU → emitter / TX)   | **GPIO27**   |
-| **green**              | IR data OUT (receiver → MCU / RX) | **GPIO14**   |
+| 5990 lead (4045 color) | 5990 pin | Function                              | Feather pin |
+|------------------------|----------|---------------------------------------|-------------|
+| **red**                | VIN      | power **and logic-level reference**   | **3V**      |
+| **black**              | GND      | ground                                | any GND     |
+| **green**              | IRout    | emitter drive (MCU → LEDs) = **TX**   | **GPIO27**  |
+| **white**              | IRin     | receiver output (LEDs → MCU) = **RX** | **GPIO14**  |
 
-These pins match the config: `remote_transmitter` → GPIO27, `remote_receiver` →
-GPIO14.
+These pins match the config: `remote_transmitter` → GPIO27 (the emitter, green),
+`remote_receiver` → GPIO14 (the receiver, white).
+
+> **⚠️ VIN must be 3V, not 5V — and green/white are easy to swap.**
+> The 5990 powers its receiver *and* LEDs from one VIN pin, and **its output logic
+> level equals VIN** (Adafruit: "red wire is 3V~5V power *and logic level*"). On a
+> 3.3V ESP32, powering VIN at 5V makes the receiver output (white) swing to ~5V into
+> GPIO14 — over the ESP32's ~3.6V max, which can damage the pin. Adafruit's own
+> Feather example says: *"wire the board's 3V pin to the transceiver VIN."*
+>
+> Also note the wire directions are the opposite of what the names suggest:
+> **green (IRout)** is what you *drive* to fire the LEDs (transmit); **white (IRin)**
+> is the demodulated signal coming *from* the receiver (receive). See
+> [Adafruit pinouts](https://learn.adafruit.com/adafruit-infrared-ir-remote-transceiver/pinouts).
 
 ## Notes
 
-- **Power the emitter from the USB pin (5V), not 3V3**, for full range. Logic on
-  the signal lines stays 3.3V from the GPIOs; the 5990 accepts 3–5V logic.
+- **Power VIN from 3V, not 5V.** VIN is the logic-level reference for the receiver
+  output, so it must match the ESP32's 3.3V logic. This trades some emitter range
+  for a pin-safe receiver line. If you specifically need 5V emitter range, power VIN
+  at 5V **and add a level shifter on the white/IRin line into GPIO14** — don't feed
+  5V straight into the GPIO.
 - If a tinned wire is loose in a breadboard hole, **pinch/fold the tip** to fatten
   it. The breadboard's spring clips help.
 - **Wire to GPIOs, not the STEMMA QT port.** The 4045 cable is labeled "I2C
@@ -32,10 +47,10 @@ GPIO14.
 ```
   5990 transceiver                         ESP32 Feather V2
   ----------------                         ----------------
-  red  (V+)  ───────────────────────────►  USB  (5V)
+  red  (VIN) ───────────────────────────►  3V   (NOT 5V — VIN sets the logic level)
   black(GND) ───────────────────────────►  GND
-  white(TX)  ───────────────────────────►  GPIO27   (remote_transmitter)
-  green(RX)  ───────────────────────────►  GPIO14   (remote_receiver)
+  green(IRout, TX) ─────────────────────►  GPIO27   (remote_transmitter → emitter)
+  white(IRin,  RX) ─────────────────────►  GPIO14   (remote_receiver  ← receiver)
 ```
 
 ## Durability note

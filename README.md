@@ -74,7 +74,11 @@ for the GUI route.
   IR support). Validated against ESPHome 2026.6.2. Confirmed silicon on the actual
   board: **ESP32-PICO-V3-02**, 8 MB flash / 2 MB PSRAM (the brief's "ESP32-WROOM"
   was inaccurate; variant is still `esp32`).
-- **Pins:** RX (receive) on **GPIO14**, TX (transmit) on **GPIO27**.
+- **Pins:** RX (receive) on **GPIO14** ← 5990 **white** (IRin); TX (transmit) on
+  **GPIO27** ← 5990 **green** (IRout). The green/white names are the reverse of what
+  they sound like — see [`docs/wiring.md`](docs/wiring.md). Don't swap them.
+- **⚠️ Power the 5990's VIN (red) from `3V`, not 5V.** VIN is the receiver's output
+  logic level; at 5V it drives ~5V into the 3.3V GPIO14 and can damage the ESP32.
 - **`inverted: false` is correct** for the Adafruit 5990's buffered output. Do
   **not** set it to `true` — that's only for a bare TSOP38238 sensor.
 - The included PSU (Adafruit 4298) is **power-only** and cannot flash the board.

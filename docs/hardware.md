@@ -26,8 +26,10 @@ anyone considering substitutions.
   `adafruit_feather_esp32_v2` (variant esp32). Arduino-cli FQBN equivalent:
   `esp32:esp32:adafruit_feather_esp32_v2`.
 - **5990 has an onboard N-channel FET driver**, so a 3.3V GPIO toggles the emitter
-  while the LEDs themselves pull from 5V for 10+ m range. No external transistor
-  needed.
+  with no external transistor. The LEDs pull from **VIN** — and on this board VIN is
+  also the logic-level reference for the receiver output, so with a 3.3V ESP32 you
+  power VIN from **3V** (see `wiring.md`), which caps emitter range but keeps the
+  receiver line pin-safe.
 - **PCB-antenna board is fine here** — an IR blaster sits in the open with line of
   sight to the gear, so an external antenna earns nothing in this placement.
 
@@ -61,11 +63,18 @@ classic dual-core ESP32, variant `esp32`):
 ## The 5990 transceiver
 
 - Combined **emitter (940 nm) + receiver (38 kHz demodulator)** on one board.
+- Pins (per [Adafruit's pinout](https://learn.adafruit.com/adafruit-infrared-ir-remote-transceiver/pinouts)):
+  **green = IRout** = drive to fire the LEDs (**transmit** → GPIO27);
+  **white = IRin** = demodulated signal from the receiver (**receive** → GPIO14).
+  The names are the reverse of what they sound like — don't swap them.
 - Output is **buffered/demodulated** → the ESPHome receiver uses `inverted: false`
   (see [troubleshooting](troubleshooting.md)).
 - Has **one vertical and one horizontal emitter LED** — reorient the board if range
   to a specific device is marginal, rather than adding a second blaster.
-- Accepts **3–5V logic**: drive the signal lines from 3.3V GPIOs, power the emitter
-  LEDs from 5V for full range.
+- **Single VIN powers both the receiver and the LEDs, and VIN is the output logic
+  level.** So VIN must match the MCU: for the 3.3V ESP32, wire VIN to **3V**, not 5V.
+  Powering VIN at 5V drives the receiver output (white) to ~5V into a 3.3V GPIO —
+  over the ESP32's ~3.6V limit. 5V is only for genuinely 5V-logic MCUs (e.g. a
+  classic Uno), or with a level shifter on the receiver line.
 - **Not I2C** despite the 4045 cable's "I2C STEMMA" label — do not use the STEMMA QT
   port.

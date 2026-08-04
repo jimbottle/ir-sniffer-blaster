@@ -20,7 +20,10 @@
   [`docs/wiring.md`](wiring.md).
 - **Power supply is flash-incapable.** The 4298 has a captive cable and supplies
   power only; the first flash needs a separate USB-C **data** cable.
-- **Power the emitter from 5V (USB pin), not 3V3** — 3V3 works but cuts range.
+- **Power VIN (red) from 3V, not 5V.** On the 5990, VIN is the receiver output's
+  logic level; 5V into the 3.3V GPIO14 can damage the ESP32. 3V trades emitter range
+  for safety. (For 5V range, add a level shifter on the white/IRin line — see
+  `wiring.md`.)
 - **Breadboard is the least rugged link** for a permanent fixture. If a connection
   gets flaky over time, solder the four 4045 leads directly to the Feather. Nothing
   in the firmware changes.

@@ -58,7 +58,7 @@ ota:
 web_server:
   port: 80              # manual control + status at http://<ip>/
 
-# IR RECEIVE (sniff + capture) — green wire -> GPIO14
+# IR RECEIVE (sniff + capture) — 5990 white wire (IRin, receiver output) -> GPIO14
 remote_receiver:
   pin:
     number: GPIO14
@@ -68,7 +68,7 @@ remote_receiver:
   idle: 25ms
   buffer_size: 2kb
 
-# IR TRANSMIT (replay / spoof) — white wire -> GPIO27
+# IR TRANSMIT (replay / spoof) — 5990 green wire (IRout, emitter drive) -> GPIO27
 remote_transmitter:
   pin: GPIO27
   carrier_duty_percent: 50%
