@@ -34,10 +34,10 @@
   router (find it in the boot log or the router's client list; MAC is on the ESP32).
   Reachable by name at `http://ir-blaster-livingroom.local/` regardless of IP. To pin
   a static IP in firmware instead, uncomment the `manual_ip:` block in the YAML.
-- **Locked out? Use the fallback AP.** If WiFi credentials are wrong or the static
-  IP collides, the board hosts its own access point named **`IR-Blaster Fallback`**
-  (password = `ap_password` from `secrets.yaml`). Connect to it and browse to the
-  captive portal to fix the network config — no USB cable needed.
+- **Locked out? Use the fallback AP.** If the WiFi join fails (wrong creds, wrong
+  band, out of range), the board hosts its own access point named
+  **`IR-Blaster Fallback`** (password = `ap_password` from `secrets.yaml`). Connect to
+  it and browse to the captive portal to fix the network config — no USB cable needed.
 - If the device never appears in HA but the web server responds, check the
   `api_encryption_key` matches what HA has stored.
 

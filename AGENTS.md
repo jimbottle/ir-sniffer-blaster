@@ -11,10 +11,12 @@ them over the Home Assistant API, MQTT, REST, or a built-in web server.
 
 ## Current state
 
-**Scaffolding only — nothing has been flashed.** Hardware is purchased. The repo is
-documented and ready for the build. The next real step is the first USB flash
-([`docs/flashing.md`](docs/flashing.md)). Do **not** compile, flash, or run the board
-unless explicitly asked — this repo is in documentation/prep mode.
+**Built and working on real hardware.** Flashed to the ESP32-PICO-V3-02 Feather, on
+2.4GHz WiFi via DHCP (address reserved on the router), reachable at
+`http://ir-blaster-livingroom.local/`. Receiver and emitter both validated on the
+board; the **Fan Power** button fires a captured raw code that toggles the fan, over
+the network and in Home Assistant. Updates go OTA now. Compiling/flashing/testing the
+board is expected — it's a live build, not prep mode.
 
 ## Source of truth
 
@@ -22,11 +24,11 @@ unless explicitly asked — this repo is in documentation/prep mode.
   source of truth for pins, protocols, and services.
 - The brief's facts are distilled into `docs/` and `README.md`.
 - **Diagnostics (not the shipped firmware):** `ir-wiring-test.yaml` (ESPHome,
-  no-network receiver test) and `arduino-tests/` (Arduino IDE sketches: a
-  library-free wiring test and an IRremote decode test). These **duplicate** the
-  receiver pin/tuning from the authoritative config — if you change RX pin or
-  tuning there, mirror it into both, or the diagnostics silently test a config the
-  real firmware no longer uses.
+  no-network receiver test) and `arduino-tests/` (Arduino IDE sketches: a library-free
+  wiring test, an IRremote decode test, and an IRremote single-shot transmit test
+  `ir_tx_test`). These **duplicate** the receiver pin/tuning from the authoritative
+  config — if you change RX pin or tuning there, mirror it into both, or the
+  diagnostics silently test a config the real firmware no longer uses.
 - **Intentional deviations from the original brief** (code-review driven, all
   reversible): the API block uses current `actions:`/`action:` syntax instead of
   the deprecated `services:`/`service:`; a fallback `ap:` + `captive_portal:` was

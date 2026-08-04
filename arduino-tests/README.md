@@ -1,11 +1,12 @@
-# Arduino IDE — IR receiver test
+# Arduino IDE — IR receiver & transmitter tests
 
 Diagnostic sketches to prove the Adafruit 5990 is wired correctly, using the
 **Arduino IDE**. These are throwaway test images — the shipped firmware for this
 project is ESPHome (`ir-blaster-livingroom.yaml`), not these sketches.
 
 Run them in order: **Stage 1 proves the wiring** (no libraries, isolates a bad
-connection fast). **Stage 2 decodes** actual remote codes.
+connection fast). **Stage 2 decodes** actual remote codes. **Stage 3 transmits** a
+captured code out the emitter and confirms the target device responds.
 
 ---
 
@@ -116,22 +117,6 @@ capture in [`../captured-codes/`](../captured-codes/).
 
 ---
 
-## Gotchas
-
-- **Serial Monitor must be 115200 baud.** At the wrong rate you get garbage or nothing.
-- **Board rebooting / boot noise (`SPI_FAST_FLASH_BOOT`, `configsip:`) shredding your
-  output?** The Arduino Serial Monitor drives DTR/RTS, which are wired to the ESP32's
-  EN (reset) and GPIO0 (boot) pins, and can reset the chip mid-print. Use
-  `python3 learn/monitor.py` instead — it holds those lines low. Measured on this board:
-  the IDE monitor rebooted constantly where `monitor.py` had zero reboots. See
-  [`../learn/README.md`](../learn/README.md).
-- **Upload fails / port busy?** Close the Serial Monitor, then Upload. Only one thing
-  can own the port at a time — this also applies to `esphome logs`.
-- **Don't set `inverted`/pull-ups on the RX pin.** The 5990's output is already
-  buffered and demodulated (same reason the ESPHome config uses `inverted: false`).
-- **Stages 1–2 test the receiver; Stage 3 (below) tests the emitter.** A phone camera
-  also sees the 940 nm LED as a faint purple flash when it fires — a quick smoke test.
-
 ## Stage 3 — transmit test (`ir_tx_test`)
 
 Requires the **IRremote** library (v4.x), same as Stage 2. Open
@@ -152,6 +137,24 @@ opened** (DTR/RTS → EN). So opening the Serial Monitor, or any tool that toggl
 DTR/RTS, re-boots the board and sends the code again. Expect an extra toggle each
 time you connect. Use `python3 ../learn/monitor.py` (holds DTR/RTS low) if you want
 to watch serial without re-triggering — though it still resets once on open.
+
+---
+
+## Gotchas
+
+- **Serial Monitor must be 115200 baud.** At the wrong rate you get garbage or nothing.
+- **Board rebooting / boot noise (`SPI_FAST_FLASH_BOOT`, `configsip:`) shredding your
+  output?** The Arduino Serial Monitor drives DTR/RTS, which are wired to the ESP32's
+  EN (reset) and GPIO0 (boot) pins, and can reset the chip mid-print. Use
+  `python3 learn/monitor.py` instead — it holds those lines low. Measured on this board:
+  the IDE monitor rebooted constantly where `monitor.py` had zero reboots. See
+  [`../learn/README.md`](../learn/README.md).
+- **Upload fails / port busy?** Close the Serial Monitor, then Upload. Only one thing
+  can own the port at a time — this also applies to `esphome logs`.
+- **Don't set `inverted`/pull-ups on the RX pin.** The 5990's output is already
+  buffered and demodulated (same reason the ESPHome config uses `inverted: false`).
+- **A phone camera** sees the 940 nm LED flash faint purple when the emitter fires
+  (Stage 3) — a quick smoke test.
 
 ## When the test passes
 
