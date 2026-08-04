@@ -26,3 +26,6 @@ __pycache__/
 .beads-credential-key
 # roborev snapshots
 /.roborev/
+
+# Beads write-ahead temp/lock files
+.beads/.~*
