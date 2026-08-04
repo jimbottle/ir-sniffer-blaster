@@ -26,9 +26,12 @@ board is expected — it's a live build, not prep mode.
 - **Diagnostics (not the shipped firmware):** `ir-wiring-test.yaml` (ESPHome,
   no-network receiver test) and `arduino-tests/` (Arduino IDE sketches: a library-free
   wiring test, an IRremote decode test, and an IRremote single-shot transmit test
-  `ir_tx_test`). These **duplicate** the receiver pin/tuning from the authoritative
-  config — if you change RX pin or tuning there, mirror it into both, or the
-  diagnostics silently test a config the real firmware no longer uses.
+  `ir_tx_test`). These **duplicate** pins/tuning from the authoritative config — the RX
+  pin (all of them), the TX pin (`ir_tx_test`, `#define IR_SEND_PIN 27`), and a captured
+  raw code (`ir_tx_test` carries a copy of one from `captured-codes/`). If you change the
+  RX **or TX** pin or tuning in `ir-blaster-livingroom.yaml`, mirror it into all of them,
+  or a diagnostic silently drives the wrong GPIO / tests a config the firmware no longer
+  uses.
 - **Intentional deviations from the original brief** (code-review driven, all
   reversible): the API block uses current `actions:`/`action:` syntax instead of
   the deprecated `services:`/`service:`; a fallback `ap:` + `captive_portal:` was
@@ -56,8 +59,10 @@ board is expected — it's a live build, not prep mode.
 - **`secrets.yaml` is git-ignored and must never be committed.** Template:
   `secrets.yaml.example`; generate the API key with `openssl rand -base64 32`.
 
-When the build begins, drive it against [`docs/validation.md`](docs/validation.md) and
-record captured codes in [`captured-codes/`](captured-codes/).
+Bring-up ran against [`docs/validation.md`](docs/validation.md) (all acceptance criteria
+met on hardware; OTA and the `send_raw_ir` service configured but not yet fired
+end-to-end). Captured codes live in [`captured-codes/`](captured-codes/) — add new ones
+there as you capture them.
 
 ---
 

@@ -20,12 +20,13 @@ Home Assistant API, MQTT, REST, or a built-in web server.
 
 ## Acceptance criteria
 
-- [ ] Board boots, joins WiFi, and is reachable (HA + web server + OTA).
-- [ ] Receiver: pressing any 38 kHz remote at the device prints decoded and raw IR to the log.
-- [ ] Transmitter: a captured code can be replayed and the target device responds.
-- [ ] A generic service exists to transmit arbitrary raw IR timing arrays programmatically.
+- [x] Board boots, joins WiFi, and is reachable (HA + web server + OTA-capable).
+- [x] Receiver: pressing any 38 kHz remote at the device prints decoded and raw IR to the log.
+- [x] Transmitter: a captured code can be replayed and the target device responds.
+- [x] A generic service exists to transmit arbitrary raw IR timing arrays programmatically.
 
-Full step-by-step checklist: [`docs/validation.md`](docs/validation.md).
+All met on hardware (OTA and the `send_raw_ir` service are configured but not yet fired
+end-to-end). Full checklist: [`docs/validation.md`](docs/validation.md).
 
 ## Quick start
 
