@@ -6,15 +6,20 @@ unticked items genuinely haven't been exercised yet.
 ## Build & connectivity
 
 - [x] `esphome run` compiles with no errors.
-- [x] Device joins WiFi (2.4GHz); reachable at `http://ir-blaster-livingroom.local/`
-      (DHCP + router reservation) and in Home Assistant.
+- [x] Device joins WiFi (2.4GHz); web server reachable at
+      `http://ir-blaster-livingroom.local/` (DHCP + router reservation).
+- [ ] Adopted in Home Assistant. *(Add in progress — the encrypted API is up, the
+      device isn't confirmed added yet.)*
 - [ ] OTA update succeeds (a second `esphome run` over the network). *(Not yet done —
       both flashes were over USB; OTA is configured but unexercised.)*
 
 ## Receive (sniff)
 
-- [x] Receiver: a remote press produces a **decoded and/or raw** line in the log.
-      (Validated with the Arduino diagnostics: 22 edge bursts + 28 clean captures.)
+- [ ] Receiver: a remote press produces a **decoded and/or raw** line in the ESPHome
+      log. *(Not yet observed. The RX **hardware/wiring** is proven via the Arduino
+      diagnostics — 22 edge bursts + 28 clean captures — but the ESPHome
+      `remote_receiver` path (`inverted: false`, `tolerance`, `idle`, `buffer_size`) is
+      a different code path; run `esphome logs` and press a remote to confirm.)*
 
 ## Transmit (blast)
 
@@ -25,8 +30,11 @@ unticked items genuinely haven't been exercised yet.
 
 ## Acceptance criteria (from the project brief)
 
-- [x] Board boots, joins WiFi, and is reachable (HA + web server + OTA-capable).
-- [x] Receiver: pressing any 38 kHz remote at the device prints decoded and raw IR to the log.
+- [ ] Board boots, joins WiFi, and is reachable (HA + web server + OTA). *(Boots, joins
+      WiFi, web server reachable — confirmed. HA adoption and OTA not yet exercised.)*
+- [ ] Receiver: pressing any 38 kHz remote at the device prints decoded and raw IR to
+      the ESPHome log. *(RX hardware proven via Arduino diagnostics; the ESPHome
+      `remote_receiver` dump not yet observed — see Receive above.)*
 - [x] Transmitter: a captured code can be replayed and the target device responds.
 - [x] A generic service exists to transmit arbitrary raw IR timing arrays programmatically.
       (`send_raw_ir` is defined and the config validates; not yet fired end-to-end — see above.)

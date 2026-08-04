@@ -16,8 +16,9 @@ anyone considering substitutions.
 ### Not in the parts list — required for first flash
 
 - **A USB-C DATA cable** (PC → Feather). The 4298 PSU is power-only and **cannot
-  flash** the board. After the initial flash, all updates go over WiFi (OTA) and
-  the 4298 just powers it.
+  flash** the board. After the initial flash, updates can go over WiFi (OTA) with the
+  4298 just powering it — though OTA hasn't been exercised on this board yet (both
+  flashes so far were over USB).
 
 ## Why these parts (context for substitutions)
 

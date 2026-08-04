@@ -13,10 +13,13 @@ them over the Home Assistant API, MQTT, REST, or a built-in web server.
 
 **Built and working on real hardware.** Flashed to the ESP32-PICO-V3-02 Feather, on
 2.4GHz WiFi via DHCP (address reserved on the router), reachable at
-`http://ir-blaster-livingroom.local/`. Receiver and emitter both validated on the
-board; the **Fan Power** button fires a captured raw code that toggles the fan, over
-the network and in Home Assistant. Updates go OTA now. Compiling/flashing/testing the
-board is expected — it's a live build, not prep mode.
+`http://ir-blaster-livingroom.local/`. The **emitter** is validated end to end: the
+`Fan Power` button, pressed over the network (REST/web server), fires a captured raw
+code that toggles the fan. **Receiver:** the RX hardware/wiring is proven via the
+Arduino diagnostics, but the ESPHome `remote_receiver` dump hasn't been watched yet
+(different code path). Not yet exercised: OTA (both flashes were USB), the HA
+integration (adoption in progress), and the `send_raw_ir` service. Compiling / flashing
+/ testing the board is expected — it's a live build, not prep mode.
 
 ## Source of truth
 
@@ -54,7 +57,8 @@ board is expected — it's a live build, not prep mode.
 - **`remote_receiver.inverted: false`** is correct for the 5990's buffered output.
   Setting `true` is only for a bare TSOP38238 and will break decoding.
 - The included PSU (4298) is **power-only**; the first flash needs a separate USB-C
-  **data** cable. Subsequent flashes are OTA.
+  **data** cable. Subsequent flashes are *intended* to go OTA (not yet exercised —
+  both flashes so far were USB).
 - The 5990 is **not I2C** — ignore the cable's "STEMMA" label; wire to GPIOs.
 - **`secrets.yaml` is git-ignored and must never be committed.** Template:
   `secrets.yaml.example`; generate the API key with `openssl rand -base64 32`.

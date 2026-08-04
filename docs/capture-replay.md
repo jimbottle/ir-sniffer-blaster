@@ -20,8 +20,8 @@ The core loop: **sniff** a remote, **store** the code, **blast** it back.
 
 ### Decoded protocols (NEC / Sony / Samsung / …)
 
-Copy the values into a `transmit_<protocol>` template button, re-flash (OTA), and
-trigger from HA or the web server:
+Copy the values into a `transmit_<protocol>` template button, re-flash (OTA or USB),
+and trigger from HA or the web server:
 
 ```yaml
 button:

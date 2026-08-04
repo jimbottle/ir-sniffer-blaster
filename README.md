@@ -6,9 +6,11 @@ demand. Built on an **ESP32 Feather V2 running ESPHome**, controllable over the
 Home Assistant API, MQTT, REST, or a built-in web server.
 
 > **Status: built and working.** Flashed on real hardware (ESP32-PICO-V3-02), on
-> 2.4GHz WiFi via DHCP, reachable at `http://ir-blaster-livingroom.local/`. Receiver
-> and emitter both validated; the **Fan Power** button fires a captured code that
-> toggles the fan, over the network. Pinned to ESPHome 2026.6.2 (`requirements.txt`).
+> 2.4GHz WiFi via DHCP, reachable at `http://ir-blaster-livingroom.local/`. The
+> **emitter** is validated end to end — the **Fan Power** button fires a captured code
+> that toggles the fan over the network. RX hardware/wiring is proven via the Arduino
+> diagnostics; the ESPHome receiver dump, HA adoption, and OTA aren't exercised yet
+> (see acceptance criteria). Pinned to ESPHome 2026.6.2 (`requirements.txt`).
 
 ## What it does
 
@@ -20,13 +22,17 @@ Home Assistant API, MQTT, REST, or a built-in web server.
 
 ## Acceptance criteria
 
-- [x] Board boots, joins WiFi, and is reachable (HA + web server + OTA-capable).
-- [x] Receiver: pressing any 38 kHz remote at the device prints decoded and raw IR to the log.
+- [ ] Board boots, joins WiFi, and is reachable (HA + web server + OTA). *(Boots, WiFi,
+      web server — confirmed. HA adoption + OTA not yet exercised.)*
+- [ ] Receiver: pressing any 38 kHz remote prints decoded and raw IR to the log. *(RX
+      hardware proven via Arduino diagnostics; ESPHome `remote_receiver` dump not yet
+      observed.)*
 - [x] Transmitter: a captured code can be replayed and the target device responds.
 - [x] A generic service exists to transmit arbitrary raw IR timing arrays programmatically.
 
-All met on hardware (OTA and the `send_raw_ir` service are configured but not yet fired
-end-to-end). Full checklist: [`docs/validation.md`](docs/validation.md).
+Transmit path fully proven on hardware. Still to confirm: the ESPHome receiver dump
+(`esphome logs`), HA adoption, OTA, and the `send_raw_ir` service. Full checklist:
+[`docs/validation.md`](docs/validation.md).
 
 ## Quick start
 
@@ -85,7 +91,8 @@ for the GUI route.
 - **`inverted: false` is correct** for the Adafruit 5990's buffered output. Do
   **not** set it to `true` — that's only for a bare TSOP38238 sensor.
 - The included PSU (Adafruit 4298) is **power-only** and cannot flash the board.
-  The first flash needs a separate **USB-C data cable**; everything after is OTA.
+  The first flash needs a separate **USB-C data cable**; updates after that can go OTA
+  over WiFi (OTA is configured but not yet exercised — both flashes so far were USB).
 - The 5990 is **not I2C** despite the "STEMMA" cable label — wire the four leads to
   GPIOs, do not use the STEMMA QT port.
 
