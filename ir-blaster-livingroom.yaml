@@ -20,10 +20,13 @@ logger:
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
-  manual_ip:            # static IP for a permanent fixture; adjust to the LAN
-    static_ip: 192.168.0.150
-    gateway: 192.168.0.1
-    subnet: 255.255.255.0
+  # Using DHCP; the address is reserved on the router. Reachable via mDNS at
+  # ir-blaster-livingroom.local. To pin a static IP in firmware instead, uncomment
+  # and set to your LAN:
+  # manual_ip:
+  #   static_ip: 192.168.0.150
+  #   gateway: 192.168.0.1
+  #   subnet: 255.255.255.0
   # Recovery fallback: if the WiFi join fails (wrong creds, or the static IP
   # above collides on the LAN), the board hosts its own AP so it stays
   # reachable for reconfig without dragging out a USB cable.
