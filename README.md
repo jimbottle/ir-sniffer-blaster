@@ -5,9 +5,10 @@ A programmable, networked **infrared blaster for a single room**. It captures
 demand. Built on an **ESP32 Feather V2 running ESPHome**, controllable over the
 Home Assistant API, MQTT, REST, or a built-in web server.
 
-> **Status: config validated, not yet flashed.** `esphome config` passes against
-> ESPHome 2026.6.2 (pinned in `requirements.txt`); no board has been flashed yet —
-> that waits on the hardware. Start with [`docs/flashing.md`](docs/flashing.md).
+> **Status: built and working.** Flashed on real hardware (ESP32-PICO-V3-02), on
+> 2.4GHz WiFi via DHCP, reachable at `http://ir-blaster-livingroom.local/`. Receiver
+> and emitter both validated; the **Fan Power** button fires a captured code that
+> toggles the fan, over the network. Pinned to ESPHome 2026.6.2 (`requirements.txt`).
 
 ## What it does
 

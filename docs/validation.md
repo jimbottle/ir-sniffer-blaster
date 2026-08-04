@@ -5,7 +5,8 @@ Work these in order — each step depends on the previous one passing.
 ## Build & connectivity
 
 - [ ] `esphome run` compiles with no errors.
-- [ ] Device joins WiFi; reachable at the static IP web server and in Home Assistant.
+- [ ] Device joins WiFi (2.4GHz); reachable at `http://ir-blaster-livingroom.local/`
+      (DHCP + router reservation) and in Home Assistant.
 - [ ] OTA update succeeds (a second `esphome run` over the network).
 
 ## Receive (sniff)

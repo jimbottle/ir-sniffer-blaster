@@ -129,9 +129,29 @@ capture in [`../captured-codes/`](../captured-codes/).
   can own the port at a time — this also applies to `esphome logs`.
 - **Don't set `inverted`/pull-ups on the RX pin.** The 5990's output is already
   buffered and demodulated (same reason the ESPHome config uses `inverted: false`).
-- These sketches **only test the receiver.** The emitter can't be verified without a
-  target device — though many phone cameras see the 940 nm LED as a faint purple
-  flash, which is a reasonable smoke test.
+- **Stages 1–2 test the receiver; Stage 3 (below) tests the emitter.** A phone camera
+  also sees the 940 nm LED as a faint purple flash when it fires — a quick smoke test.
+
+## Stage 3 — transmit test (`ir_tx_test`)
+
+Requires the **IRremote** library (v4.x), same as Stage 2. Open
+**`arduino-tests/ir_tx_test/ir_tx_test.ino`**.
+
+It replays a raw code captured with Stage 2 (baked in as the example
+`fan-power-switch`; swap the array for your own) out the emitter on **GPIO27**
+(green / IRout). It fires **once per boot**, then idles — so the target toggles a
+single time. Tap the board's **RESET** to send again.
+
+1. Paste your captured code into the `code[]` array (IRremote raw format).
+2. Upload, point the 5990 at the target device.
+3. On boot it fires once → the device should respond. (Phone-camera check: the LEDs
+   flash faint purple as it sends.)
+
+⚠️ **It fires on every boot — and this board resets whenever a serial port is
+opened** (DTR/RTS → EN). So opening the Serial Monitor, or any tool that toggles
+DTR/RTS, re-boots the board and sends the code again. Expect an extra toggle each
+time you connect. Use `python3 ../learn/monitor.py` (holds DTR/RTS low) if you want
+to watch serial without re-triggering — though it still resets once on open.
 
 ## When the test passes
 

@@ -33,7 +33,8 @@ are two ways to run ESPHome:
    `/dev/cu.usbserial-*` or `/dev/cu.usbmodem*` (not `/dev/ttyUSB*` — that's Linux).
    *(HA add-on: install via "Plug into this computer".)*
 4. Confirm it joins WiFi and appears in Home Assistant / responds at
-   `http://192.168.0.150/`.
+   `http://ir-blaster-livingroom.local/` (the config uses DHCP; the boot log prints
+   the assigned IP — reserve it on your router).
 
 ## Later updates (over the air)
 

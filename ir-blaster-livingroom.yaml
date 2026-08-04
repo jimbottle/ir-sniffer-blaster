@@ -27,9 +27,9 @@ wifi:
   #   static_ip: 192.168.0.150
   #   gateway: 192.168.0.1
   #   subnet: 255.255.255.0
-  # Recovery fallback: if the WiFi join fails (wrong creds, or the static IP
-  # above collides on the LAN), the board hosts its own AP so it stays
-  # reachable for reconfig without dragging out a USB cable.
+  # Recovery fallback: if the WiFi join fails (wrong creds, wrong band, out of
+  # range), the board hosts its own AP so it stays reachable for reconfig without
+  # dragging out a USB cable.
   ap:
     ssid: "IR-Blaster Fallback"
     password: !secret ap_password

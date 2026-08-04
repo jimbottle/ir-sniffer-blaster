@@ -30,8 +30,10 @@
 
 ## Network gotchas
 
-- **Static IP.** The config pins `192.168.0.150`. Change it to fit the LAN, or
-  delete the `manual_ip:` block to use DHCP.
+- **Addressing.** The config uses **DHCP** — reserve the device's address on your
+  router (find it in the boot log or the router's client list; MAC is on the ESP32).
+  Reachable by name at `http://ir-blaster-livingroom.local/` regardless of IP. To pin
+  a static IP in firmware instead, uncomment the `manual_ip:` block in the YAML.
 - **Locked out? Use the fallback AP.** If WiFi credentials are wrong or the static
   IP collides, the board hosts its own access point named **`IR-Blaster Fallback`**
   (password = `ap_password` from `secrets.yaml`). Connect to it and browse to the
@@ -54,8 +56,9 @@ for your installed version.
 ## First-boot checklist if nothing works
 
 1. Compiles cleanly? (`esphome run` finishes with no errors.)
-2. On WiFi? (appears on the router / pingable at the static IP.)
-3. Web server up at `http://192.168.0.150/`?
+2. On WiFi? (appears in the router's client list; the boot log prints the IP.) Note
+   the ESP32 is **2.4GHz-only** — a 5GHz SSID shows as "no networks found".
+3. Web server up at `http://ir-blaster-livingroom.local/`?
 4. Receiver: any decoded/raw line on a remote press in `esphome logs`?
 5. Transmitter: does a known button actuate the real device?
 

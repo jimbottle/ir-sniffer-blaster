@@ -30,9 +30,13 @@ unless explicitly asked — this repo is in documentation/prep mode.
 - **Intentional deviations from the original brief** (code-review driven, all
   reversible): the API block uses current `actions:`/`action:` syntax instead of
   the deprecated `services:`/`service:`; a fallback `ap:` + `captive_portal:` was
-  added for WiFi recovery; and the example `transmit_*` buttons ship **commented
-  out** so the first flash exposes no pressable buttons firing placeholder codes.
-  Uncomment the buttons after capturing real codes.
+  added for WiFi recovery; WiFi uses **DHCP** (address reserved on the router) with
+  the `manual_ip:` static block kept commented out as an alternative.
+- **Real captured buttons, not placeholders.** The commented placeholder buttons
+  were replaced by a live **`Fan Power`** `transmit_raw` button using a real captured
+  code (`captured-codes/`), verified toggling the fan on hardware. Add more the same
+  way (capture → convert to signed +mark/-space → add a button). Don't re-comment
+  `Fan Power` — it's verified, not a placeholder.
 
 ## Non-negotiable facts (don't "fix" these)
 
