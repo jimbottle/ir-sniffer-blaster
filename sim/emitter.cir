@@ -18,9 +18,11 @@
 *
 * Run:  ngspice -b sim/emitter.cir
 *
-* Result (this fit):   VIN 3.0V -> ~106 mA    3.3V -> ~124 mA    5.0V -> ~229 mA
-*   => at the ESP32's 3.3V rail, ~0.55x the 5V drive current per LED.
-*   => range ~ sqrt(0.55) ~ 0.75x the 5V range (intensity ∝ I, range ∝ sqrt).
+* Result (this fit lands ON the anchors):
+*   VIN 3.0V -> 100 mA    3.3V -> 115 mA    5.0V -> 202 mA
+*   3V:5V ratio = 0.50 -> reproduces Adafruit's stated 3V-vs-5V halving.
+*   => at the ESP32's 3.3V rail, ~0.57x the 5V drive current per LED.
+*   => range ~ sqrt(0.57) ~ 0.75x the 5V range (intensity ∝ I, range ∝ sqrt).
 *      If 5V gives Adafruit's "10+ m", 3.3V gives roughly 7-8 m - ample for a
 *      single-room blaster, while keeping the receiver line pin-safe.
 *
@@ -31,11 +33,11 @@
 * ---------------------------------------------------------------------------
 
 V1  vin 0   DC 5
-R1  vin a   15.5        ; series resistor (fitted to Adafruit's currents)
+R1  vin a   18.55       ; series resistor (fitted to hit 100mA@3V, 200mA@5V)
 D1  a   k   IRLED       ; 940nm IR LED
-Rds k   0   0.12        ; N-FET on-resistance, fully driven (lumped)
+Rds k   0   0.1         ; N-FET on-resistance, fully driven (lumped)
 
-.model IRLED D(IS=3e-13 N=1.9 RS=0.35)   ; IR LED, Vf ~1.3-1.6V across 0.1-0.23A
+.model IRLED D(IS=1e-10 N=2 RS=0.65)   ; IR LED, Vf ~1.1-1.3V across 0.1-0.2A
 
 .control
 dc V1 3.0 5.0 0.1

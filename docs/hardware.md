@@ -79,8 +79,8 @@ classic dual-core ESP32, variant `esp32`):
   MCU, use a separate 5V emitter rather than pushing this board's VIN to 5V — see
   [`wiring.md`](wiring.md).
 - **The 3V range cost is small.** A SPICE check ([`../sim/`](../sim/), calibrated to
-  Adafruit's ~100mA@3V / ~200mA@5V figures) puts the emitter at **~124 mA/LED at 3.3V
-  vs ~229 mA at 5V** — about 55% of the current, so roughly **0.75× the range**
+  Adafruit's ~100mA@3V / ~200mA@5V figures) puts the emitter at **~115 mA/LED at 3.3V
+  vs ~200 mA at 5V** — about 57% of the current, so roughly **0.75× the range**
   (√ of intensity). Adafruit's "10+ m" at 5V becomes ~7–8 m at 3.3V: still plenty for
   a single-room blaster, and safely within the LED/FET ratings.
 - **Not I2C** despite the 4045 cable's "I2C STEMMA" label — do not use the STEMMA QT
