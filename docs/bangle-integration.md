@@ -48,12 +48,13 @@ discipline of [`validation.md`](validation.md).
 | ESPHome can push **arbitrary-length data to HA's event bus** | **VERIFIED** by source read: `api/__init__.py:646` registers the `homeassistant.event` action. Event name must be `esphome.*` (`validate_homeassistant_event`, line 624). This is the route around the 255-char state cap |
 | That trigger **fires on this hardware** | **UNVERIFIED.** See `README.md` acceptance criteria: the ESPHome `remote_receiver` dump has not been observed at all. RX is proven only via the Arduino diagnostics, a different code path |
 | A capture can round-trip `on_raw` → `send_raw_ir` → device responds | **UNVERIFIED.** This is the single test that validates the whole premise |
-| The board is **adopted in Home Assistant** | **PROVEN** 2026-08-04, and `validation.md` is stale on this — it still lists adoption unticked. Evidence: `my-bangle/apps/irblast/NOTES.md:47` records `button.ir_blaster_living_room_fan_power` **state** moving to `21:36:46.101609Z`. That entity can only exist via HA's ESPHome integration over the encrypted native API, and `automations/bangle_irblast.yaml` presses it by `entity_id`. Correcting `validation.md` is R12 |
-| **HA → ESP32 over the encrypted API** carries an action | **PROVEN** by the same measurement — the button entity's state moved, which is HA calling the device, not HA calling itself. This is the hop the whole architecture rests on, so it gets its own row |
-| `homeassistant.event` reaches HA **from** the device | **UNVERIFIED**, but low risk — it rides the same single persistent API connection proven above, in the other direction |
+| The board is **adopted in Home Assistant** | **PROVEN**, and `validation.md` is stale on this — it still lists adoption unticked. Evidence is the *existence* of `button.ir_blaster_living_room_fan_power`, which HA only creates by enumerating the device over the ESPHome integration, and `automations/bangle_irblast.yaml` presses it by `entity_id`. Correcting `validation.md` is R12 |
+| **HA → ESP32 over the encrypted API** delivers an action | **PROVEN** 2026-08-04 — `my-bangle/apps/irblast/NOTES.md:43`: *"A tap on the watch fired the fan."* **The physical actuation is the evidence.** This is the hop the whole architecture rests on, so it gets its own row |
+| ⚠️ *Why the button entity's state is NOT evidence for the row above* | Recorded so it is not re-derived — an earlier revision of this doc made exactly this mistake. **ESPHome buttons are stateless.** There is no `ButtonStateResponse` anywhere in the vendored protocol (zero hits across `site-packages`), and `ButtonCommandRequest` is fire-and-forget with no reply (`aioesphomeapi/client.py:1661`). A `button.*` entity's HA state is a **locally-generated `last_pressed` timestamp** written by HA's own `ButtonEntity` — the same class of artefact as `last_triggered`. It proves HA queued the command, never that the device received it |
+| `homeassistant.event` reaches HA **from** the device | **UNVERIFIED**, but low risk — the API connection is proven live by the fan actuation above, and the event rides that same single persistent connection in the other direction |
 | **OTA** works on this board | **UNVERIFIED.** Both flashes to date were USB. The capture firmware change needs at least one flash — budget for USB and treat wireless as unproven |
 | `send_raw_ir` transmits | **UNVERIFIED.** `validation.md` — transmit was proven via the `transmit_raw` button, not the HA action |
-| Watch can reach HA over **plain HTTP on the LAN** | **PROVEN** 2026-08-04 — a watch tap moved HA's `automation.bangle_ir_blaster_fan_power` `last_triggered`. **Read narrowly: `last_triggered` alone proves only that the automation started, not that its action reached the board.** What extends it is the *second* timestamp in the same measurement — the button entity's state, 578 µs later — which is a separate claim and has its own row above |
+| Watch can reach HA over **plain HTTP on the LAN** | **PROVEN** 2026-08-04 — a watch tap moved HA's `automation.bangle_ir_blaster_fan_power` `last_triggered`. **Read narrowly: neither timestamp in that measurement proves delivery to the board** — `last_triggered` says the automation started, and the button entity's state is HA's own `last_pressed` (see the warning row above). Delivery is proven by the fan physically toggling, not by either timestamp |
 | `Bangle.http` resolves with the **response body** | **SOURCE READ ONLY.** `apps/android/lib.js` resolves `{t:"http", resp:"<body>", id}`. **No non-empty body has ever been observed on this setup** — every request so far hit a webhook that answers 200 empty |
 | `Bangle.http` exposes an **HTTP status code** | **NO — it does not exist in the contract.** A 404, a captive-portal splash and a success are indistinguishable |
 | Query strings survive the relay | **UNVERIFIED.** Everything today is path-only. See R4 — this one has no clean workaround |
@@ -148,7 +149,32 @@ that a bad `!include` fails `ha core check` and lands Core in **safe mode**. A m
 runtime JSON read breaks one automation; a malformed config-load read breaks the
 instance.
 
-### Schema
+### Schema — two files, one private and one projected
+
+**These are different shapes and conflating them is the likeliest way the two sides
+diverge.** The private record holds the raw timing arrays; the public one never does.
+
+**Private — `/config/ir_codes.json`.** Read by the `command_line` sensor at fire time.
+This is the only place a raw array exists.
+
+```json
+{
+  "generation": 7,
+  "codes": [{
+    "slug": "fan.power",
+    "short": "Fan Power",
+    "name": "Ceiling fan power toggle",
+    "device": "fan",
+    "status": "confirmed",
+    "captured_at": "2026-08-04",
+    "raw": [1280, -420, 1230, -420, 430, -1270, 1230],
+    "prior_raw": [1280, -420, 1230, -420, 430, -1270, 1230]
+  }]
+}
+```
+
+**Public — `/local/ir-codes.json`.** A projection of the above, regenerated on every
+write. Identical minus `raw`/`prior_raw`, plus `entries` as a size hint.
 
 ```json
 {
@@ -165,8 +191,19 @@ instance.
 }
 ```
 
+**Raw arrays are deliberately never published to `/local/`.** Three reasons: `/local/`
+is unauthenticated to anyone who can reach HA; the arrays are the bulk of the payload
+and R2 may find a tight body-size ceiling; and the watch has no use for them — it fires
+by slug and HA does the lookup.
+
+`prior_raw` is what makes rolling-code detection possible. The write path compares a new
+capture for an existing slug against it: identical → promote toward `confirmed`,
+different → mark `rolling`. Without it there is nothing to diff and the `rolling` status
+could never be reached.
+
 - `slug` — `<device>.<function>`, lowercase `[a-z0-9_]` per segment, from a controlled
-  vocabulary shipped in the same payload (see H3).
+  vocabulary shipped in the same payload (see H3). **The join key between both files.**
+- `entries` — public only, `len(raw)`. A size hint for the UI, not authoritative.
 - `short` — **required, ≤14 chars, enforced on the write path** so the watch never has
   to truncate. 14 is the Bangle agent's measured comfortable width at 176 px.
 - `status` — `unverified` | `confirmed` | `rolling`.
@@ -179,11 +216,33 @@ instance.
 
 ### Endpoints
 
-| endpoint | shape | notes |
-|---|---|---|
-| list | `GET /local/ir-codes.json` | HA serves `www/` unauthenticated. Regenerated on every library write |
-| fire | `GET /api/webhook/<blast-id>?code=<slug>` | **name lookup only** |
-| status | `GET /local/ir-status.json` | `{tx_counter, last_slug, last_fired_at, last_error}` |
+| endpoint | shape | exposure | notes |
+|---|---|---|---|
+| list | `GET /local/ir-codes.json` | **LAN only** | HA serves `www/` unauthenticated on the LAN. From outside it is behind Access. Regenerated on every library write |
+| fire | `GET /api/webhook/<blast-id>?code=<slug>` | **LAN + away** | The one Access-bypassed path. **name lookup only** |
+| status | `GET /local/ir-status.json` | **LAN only** | `{tx_counter, last_slug, last_fired_at, last_error}` |
+
+**⚠️ The three endpoints do not share one exposure regime, and v1 ships that way
+deliberately.** Fire is bypassed through Cloudflare Access on its exact path; list and
+status are `/local/` static files with no bypass. **So from away the watch can fire but
+cannot read the library or poll the counter.** Consequences, stated here rather than
+left for Phase 3 to discover:
+
+- **Away-firing works, but blind.** No confirmation, and the menu comes from the watch's
+  cached copy. That is acceptable for v1 — it is exactly today's behaviour plus a menu —
+  but it means H4's confirmation answer is **LAN-only**, and the honest-UI argument has
+  to say so.
+- **An Access challenge returns a login page, not JSON.** With no status code on this
+  transport, a 302-to-HTML is indistinguishable from data: it will fail `JSON.parse`, or
+  worse half-parse (the R3 failure mode), with no way to report why. **The watch must
+  treat an unparseable list/status response as "unreachable", never as an empty library.**
+  This is why R5 and new question A (does the relay follow redirects?) matter more than
+  they first looked.
+- **The upgrade path, if away-reads are wanted later:** two more Access applications,
+  exact-path scoped to `/local/ir-codes.json` and `/local/ir-status.json`. Cost is that
+  the code library — an inventory of the room's devices — becomes readable by anyone on
+  the internet who has the URL. Not secret, but not nothing. **Not recommended for v1**;
+  noted so it is not rediscovered as a surprise.
 
 **Never accept a raw array over the webhook.** `?code=<slug>` is bounded to codes you
 captured. `?raw=1280,-420,...` would be arbitrary IR transmission by anyone holding the
@@ -276,12 +335,13 @@ Runnable without the watch and without the Bangle agent. **R1 blocks everything.
       array at the **edges** (the committed array ends on a mark, `1230`, with no
       trailing space); and `buffer_size` bounds capture length. **Blocking everything.**
 - [ ] **R12 — Correct `validation.md`: HA adoption is proven, not pending.** *(Reduced
-      from a blocking gate after review — the evidence was in the sibling repo all along.)*
-      `my-bangle/apps/irblast/NOTES.md:47` records the `button.ir_blaster_living_room_fan_power`
-      **entity state** moving, which only happens through HA's ESPHome integration. The
-      HA↔ESP32 API hop is therefore established and nothing is gated on it. Tick the row
-      and cite the measurement. Also re-check the OTA and receiver rows while in there —
-      if one row was stale, others may be.
+      from a blocking gate; the evidence was in the sibling repo all along. Re-grounded
+      after review — an intermediate revision cited the wrong evidence, see the warning
+      row in the table.)* The citation is `my-bangle/apps/irblast/NOTES.md:43` — **"A tap
+      on the watch fired the fan"** — the physical actuation, *not* either HA timestamp.
+      That proves the full chain including HA→ESP32 delivery, so nothing is gated on it.
+      Tick the row and cite the actuation. Also re-check the OTA and receiver rows while
+      in there — two rows have now turned out stale, so assume others are.
 - [ ] **R13 — Raise `buffer_size` past 2 kb** and confirm the config still validates.
       Do it before anyone tries to capture an HVAC frame.
 - [ ] **R11 — Measure real array lengths** for whatever remotes are actually in the room.
