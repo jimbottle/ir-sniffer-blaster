@@ -49,12 +49,12 @@ discipline of [`validation.md`](validation.md).
 | That trigger **fires on this hardware** | **UNVERIFIED.** See `README.md` acceptance criteria: the ESPHome `remote_receiver` dump has not been observed at all. RX is proven only via the Arduino diagnostics, a different code path |
 | A capture can round-trip `on_raw` → `send_raw_ir` → device responds | **UNVERIFIED.** This is the single test that validates the whole premise |
 | The board is **adopted in Home Assistant** | **PROVEN**, and `validation.md` is stale on this — it still lists adoption unticked. Evidence is the *existence* of `button.ir_blaster_living_room_fan_power`, which HA only creates by enumerating the device over the ESPHome integration, and `automations/bangle_irblast.yaml` presses it by `entity_id`. Correcting `validation.md` is R12 |
-| **HA → ESP32 over the encrypted API** delivers an action | **PROVEN** 2026-08-04 — `my-bangle/apps/irblast/NOTES.md:43`: *"A tap on the watch fired the fan."* **The physical actuation is the evidence.** This is the hop the whole architecture rests on, so it gets its own row |
-| ⚠️ *Why the button entity's state is NOT evidence for the row above* | Recorded so it is not re-derived — an earlier revision of this doc made exactly this mistake. **ESPHome buttons are stateless.** There is no `ButtonStateResponse` anywhere in the vendored protocol (zero hits across `site-packages`), and `ButtonCommandRequest` is fire-and-forget with no reply (`aioesphomeapi/client.py:1661`). A `button.*` entity's HA state is a **locally-generated `last_pressed` timestamp** written by HA's own `ButtonEntity` — the same class of artefact as `last_triggered`. It proves HA queued the command, never that the device received it |
-| `homeassistant.event` reaches HA **from** the device | **UNVERIFIED**, but low risk — the API connection is proven live by the fan actuation above, and the event rides that same single persistent connection in the other direction |
+| **HA → ESP32 over the encrypted API** delivers an action | **UNVERIFIED.** HA queues the command; nothing observed shows the device received it. See the standing rule below. Closing it is cheap — R15 |
+| 🚨 **STANDING RULE: no HA-side artefact proves this hop.** | **Three consecutive revisions of this doc asserted it and were wrong, each on a different artefact.** Do not assert it again without device-side or physical evidence. What has been tried and does **not** work: (1) `automation.…last_triggered` — proves the automation started; (2) `button.….state` — **ESPHome buttons are stateless.** No `ButtonStateResponse` exists anywhere in the vendored protocol (zero hits across `site-packages`) and `ButtonCommandRequest` is fire-and-forget with no reply (`aioesphomeapi/client.py:1661`), so the state is a **locally-generated `last_pressed`** written by HA's own `ButtonEntity`; (3) `my-bangle/apps/irblast/NOTES.md:43` *"A tap on the watch fired the fan"* — **not an independent observation.** The same sentence says *"Measured from Home Assistant rather than taken on report"*, and that note's own chain table ends at `webhook → automation → button`, with no `button → ESP32 → fan` leg. It is a summary of artefacts (1) and (2) |
+| `homeassistant.event` reaches HA **from** the device | **UNVERIFIED**, but low risk — and deliberately *not* grounded on the disputed hop. The justification is entity **enumeration**: HA only creates `button.ir_blaster_living_room_fan_power` by receiving a list-entities response *from* the device, which is device→HA traffic on the same persistent connection an event would use |
 | **OTA** works on this board | **UNVERIFIED.** Both flashes to date were USB. The capture firmware change needs at least one flash — budget for USB and treat wireless as unproven |
 | `send_raw_ir` transmits | **UNVERIFIED.** `validation.md` — transmit was proven via the `transmit_raw` button, not the HA action |
-| Watch can reach HA over **plain HTTP on the LAN** | **PROVEN** 2026-08-04 — a watch tap moved HA's `automation.bangle_ir_blaster_fan_power` `last_triggered`. **Read narrowly: neither timestamp in that measurement proves delivery to the board** — `last_triggered` says the automation started, and the button entity's state is HA's own `last_pressed` (see the warning row above). Delivery is proven by the fan physically toggling, not by either timestamp |
+| Watch can reach HA over **plain HTTP on the LAN** | **PROVEN** 2026-08-04 — a watch tap moved HA's `automation.bangle_ir_blaster_fan_power` `last_triggered`. **This is the whole of what that measurement proves.** Neither timestamp in it says anything about delivery to the board; see the standing rule above |
 | `Bangle.http` resolves with the **response body** | **SOURCE READ ONLY.** `apps/android/lib.js` resolves `{t:"http", resp:"<body>", id}`. **No non-empty body has ever been observed on this setup** — every request so far hit a webhook that answers 200 empty |
 | `Bangle.http` exposes an **HTTP status code** | **NO — it does not exist in the contract.** A 404, a captive-portal splash and a success are indistinguishable |
 | Query strings survive the relay | **UNVERIFIED.** Everything today is path-only. See R4 — this one has no clean workaround |
@@ -334,14 +334,23 @@ Runnable without the watch and without the Bangle agent. **R1 blocks everything.
       receiver applies its own filtering, so a live capture may differ from the stored
       array at the **edges** (the committed array ends on a mark, `1230`, with no
       trailing space); and `buffer_size` bounds capture length. **Blocking everything.**
-- [ ] **R12 — Correct `validation.md`: HA adoption is proven, not pending.** *(Reduced
-      from a blocking gate; the evidence was in the sibling repo all along. Re-grounded
-      after review — an intermediate revision cited the wrong evidence, see the warning
-      row in the table.)* The citation is `my-bangle/apps/irblast/NOTES.md:43` — **"A tap
-      on the watch fired the fan"** — the physical actuation, *not* either HA timestamp.
-      That proves the full chain including HA→ESP32 delivery, so nothing is gated on it.
-      Tick the row and cite the actuation. Also re-check the OTA and receiver rows while
-      in there — two rows have now turned out stale, so assume others are.
+- [ ] **R12 — Correct `validation.md`: HA *adoption* is proven, but only adoption.**
+      Adoption stands on entity **enumeration** — `button.ir_blaster_living_room_fan_power`
+      exists, and HA only creates it from a list-entities response over the ESPHome
+      integration. That is a separate claim from delivery (R15), and conflating the two is
+      what went wrong three revisions running. Tick adoption, cite enumeration, leave
+      delivery open.
+      **Also disambiguate `validation.md:26-27` while in there.** It ticks "actuates the
+      real device" but qualifies it "over the network via **REST**" — most plausibly
+      ESPHome's own `web_server`, which bypasses HA's native API entirely. If so, it is
+      not evidence for R15 and the line should say which REST it means. Three rows have
+      now turned out stale or ambiguous; assume the rest are too.
+- [ ] **R15 — Prove HA → ESP32 delivery, or record it as open.** *(New; the hop three
+      revisions asserted without evidence.)* The test is ~10 seconds: press
+      `button.ir_blaster_living_room_fan_power` **from Home Assistant** and watch whether
+      the fan physically toggles. Acceptable evidence is a human observing the fan, a
+      device-side log line, or `tx_counter` moving — **never** an HA-side timestamp.
+      Gates Phase 2, not Phase 0 (which runs on-device with no HA in the loop).
 - [ ] **R13 — Raise `buffer_size` past 2 kb** and confirm the config still validates.
       Do it before anyone tries to capture an HVAC frame.
 - [ ] **R11 — Measure real array lengths** for whatever remotes are actually in the room.
@@ -388,6 +397,13 @@ they want to be batched into one sitting. Answers feed directly into Phase 2 siz
       fire-then-poll-counter, are both sequential patterns that are untested.
 - [ ] **R10 — Watch RAM headroom.** `process.memory()` before and after holding a parsed
       library. Storage is not the constraint; RAM is.
+- [ ] **Correct `apps/irblast/NOTES.md:43` in the sibling repo.** *"A tap on the watch
+      fired the fan"* reads as a physical observation but the same sentence grounds it in
+      *"Measured from Home Assistant rather than taken on report"*, and that note's own
+      chain table ends at `webhook → automation → button`. It has now been mis-cited as
+      delivery evidence three times — once by the IR agent, from this repo. Reword it to
+      what was actually observed, or add the missing `button → ESP32 → fan` leg if someone
+      did watch the fan and it simply went unrecorded.
 - [ ] **Review the schema above** and push back on `short` ≤14, the `status` enum, and
       flat-vs-nested. Sizing is yours to constrain.
 - [ ] Phase 3 build: app, transport, UI, caching.
@@ -399,12 +415,11 @@ Agents should not settle these alone.
 - [ ] **H5 — Physical access for the measurement session.** Phase 1 needs the watch on
       the phone plus somebody to open the BLE window; Chrome's device chooser needs a
       human click. Roughly one sitting, and it gates the Bangle agent's entire list above.
-- [ ] **H6 — Sequencing: close the receiver acceptance criteria first?** `README.md` and
-      `validation.md` list the receiver dump, HA adoption and OTA as unexercised — but
-      adoption is now known to be stale rather than pending (R12), so the real open items
-      are the **receiver dump** and **OTA**. Both agents recommend closing R1 before any
-      UI work. Needs a decision because it front-loads hardware work before anything
-      visible ships.
+- [ ] **H6 — Sequencing: close the hardware acceptance criteria first?** The open items
+      are the **receiver dump** (R1), **HA→ESP32 delivery** (R15) and **OTA**. Adoption
+      came off the list; delivery went back on after review. Both agents recommend closing
+      R1 before any UI work, and R15 is ~10 seconds so it should just be done. Needs a
+      decision because it front-loads hardware work before anything visible ships.
 - [ ] **H1 — Widening the webhook.** *Reduced in scope this revision* — rotation already
       happened, so this is no longer "rotate first." What remains: is broadening the id
       from one action to a whole library acceptable, and do you want the **split-id**
