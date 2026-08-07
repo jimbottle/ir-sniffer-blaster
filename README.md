@@ -71,6 +71,7 @@ for the GUI route.
 | `docs/troubleshooting.md`       | Constraints, gotchas, and known limitations                      |
 | `docs/validation.md`            | Acceptance checklist                                              |
 | `docs/extensions.md`            | Ideas once the basics work                                       |
+| `docs/bangle-integration.md`    | Plan for browsing and firing captured codes from a Bangle.js watch |
 | `captured-codes/`               | Record captured IR codes here                                    |
 | `arduino-tests/`                | Arduino IDE diagnostic sketches to verify the IR receiver wiring |
 | `ir-wiring-test.yaml`           | ESPHome no-network receiver test (alternative to `arduino-tests/`)|
