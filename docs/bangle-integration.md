@@ -91,10 +91,10 @@ discipline of [`validation.md`](validation.md).
 | ESPHome can push **arbitrary-length data to HA's event bus** | **VERIFIED** by source read: `api/__init__.py:646` registers the `homeassistant.event` action. Event name must be `esphome.*` (`validate_homeassistant_event`, line 624). This is the route around the 255-char state cap |
 | That trigger **fires on this hardware** | **UNVERIFIED.** See `README.md` acceptance criteria: the ESPHome `remote_receiver` dump has not been observed at all. RX is proven only via the Arduino diagnostics, a different code path |
 | A capture can round-trip `on_raw` → `send_raw_ir` → device responds | **UNVERIFIED.** This is the single test that validates the whole premise |
-| The board is **adopted in Home Assistant** | **PROVEN**, and `validation.md` is stale on this — it still lists adoption unticked. Evidence is the *existence* of `button.ir_blaster_living_room_fan_power`, which HA only creates by enumerating the device over the ESPHome integration, and `automations/bangle_irblast.yaml` presses it by `entity_id`. Correcting `validation.md` is R12 |
+| The board is **adopted in Home Assistant** | **PROVEN.** Evidence is the ESPHome integration's own **config entry** — `core.config_entries` pins "IR Blaster (Living Room)" to `host: 192.168.0.6` (`home-assistant-pi/CHANGELOG.md:1446`, `:1468`). Entity existence is corroborating only: HA also creates `button.*` entities from template helpers and MQTT discovery, so an earlier "HA *only* creates that entity via ESPHome" was false |
 | **HA → ESP32 over the encrypted API** delivers an action | **PROVEN 2026-08-07 (R15 closed).** The owner pressed `button.ir_blaster_living_room_fan_power` in HA and **watched the fan toggle**, on the standing production firmware with nothing flashed or changed beforehand. That is the physical observation the standing rule below demands — and note it is the *only* citation of the four attempted that qualifies |
 | 🚨 **STANDING RULE: no HA-side artefact proves this hop.** | *Kept after R15 closed, because the rule is what got it closed correctly.* **Three consecutive revisions asserted this hop and were wrong, each on a different artefact; the fourth attempt was a human watching the fan, and that is the one that held.** The hop was working the whole time — this was an evidence gap, never a fault — but "it probably works" is not what this table records. Do not assert this class of claim without device-side or physical evidence. What was tried and does **not** work: (1) `automation.…last_triggered` — proves the automation started; (2) `button.….state` — **ESPHome buttons are stateless.** No `ButtonStateResponse` exists anywhere in the vendored protocol (zero hits across `site-packages`) and `ButtonCommandRequest` is fire-and-forget with no reply (`aioesphomeapi/client.py:1661`), so the state is a **locally-generated `last_pressed`** written by HA's own `ButtonEntity`; (3) `my-bangle/apps/irblast/NOTES.md:43` *"A tap on the watch fired the fan"* — **not an independent observation.** The same sentence says *"Measured from Home Assistant rather than taken on report"*, and that note's own chain table ends at `webhook → automation → button`, with no `button → ESP32 → fan` leg. It is a summary of artefacts (1) and (2) |
-| `homeassistant.event` reaches HA **from** the device | **UNVERIFIED**, but low risk — and deliberately *not* grounded on the disputed hop. The justification is entity **enumeration**: HA only creates `button.ir_blaster_living_room_fan_power` by receiving a list-entities response *from* the device, which is device→HA traffic on the same persistent connection an event would use |
+| `homeassistant.event` reaches HA **from** the device | **UNVERIFIED**, but low risk — the connection is proven live in both directions by R15. *(An earlier revision grounded this on entity enumeration and called it "device→HA traffic". That was wrong: enumeration is a **request/response round trip** — `client.py:401-407` sends `ListEntitiesRequest` and blocks on `ListEntitiesDoneResponse` — so it proved HA→device delivery, the very thing the adjacent row then claimed was unproven. The two rows contradicted each other.)* |
 | **OTA** works on this board | **UNVERIFIED.** Both flashes to date were USB. The capture firmware change needs at least one flash — budget for USB and treat wireless as unproven |
 | `send_raw_ir` transmits | **UNVERIFIED.** `validation.md` — transmit was proven via the `transmit_raw` button, not the HA action |
 | Watch can reach HA over **plain HTTP on the LAN** | **PROVEN** 2026-08-04 — a watch tap moved HA's `automation.bangle_ir_blaster_fan_power` `last_triggered`. **This is the whole of what that measurement proves.** Neither timestamp in it says anything about delivery to the board; see the standing rule above |
@@ -156,6 +156,20 @@ already resolved and only the widening decision remains.
 "fires one fan" to "fires anything in the library" changes what a leaked id can do, and
 the fire path is unauthenticated by design so that it works from outside the LAN. The
 proposal is to split the ids — see the endpoints section.
+
+**The HA↔ESP32 link has been observed dropping, and every fire in this design rides it.**
+`home-assistant-pi/CHANGELOG.md:1427-1441` records **five** consecutive `Referenced
+entities button.ir_blaster_living_room_fan_power are missing or not currently available`
+failures at 21:38:44–21:39:48Z on 2026-08-04 — minutes *after* the successful press —
+plus a `ResolveTimeoutAPIError` and an `EncryptionHelloAPIError`. The device dropped
+**after** the press, and that entry explicitly declines to call it settled. The board is
+pinned at a **bare IP, `192.168.0.6`, with no DHCP reservation** (`:1446`, `:1468`).
+
+Two consequences for this plan. **A fire can fail at HA's entity-availability check and
+never reach the API at all** — a third outcome distinct from "the device received it and
+did nothing", and one an observer watching the fan cannot distinguish. And it strengthens
+the case for the H4 transmit counter: a counter that does *not* move is the only thing
+that separates "never delivered" from "delivered and the IR did nothing".
 
 **Every watch action depends on two Android processes.** Gadgetbridge *and* the
 Internet Helper add-on. The helper is not currently exempt from battery optimization
@@ -389,8 +403,21 @@ Runnable without the watch and without the Bangle agent. **R1 blocks everything.
 - [x] **R15 — HA → ESP32 delivery. CLOSED 2026-08-07, PASS.** Owner pressed
       `button.ir_blaster_living_room_fan_power` in HA and watched the fan toggle, on the
       standing production firmware with nothing flashed beforehand. Phase 2 is unblocked.
-- [x] **R13 — `buffer_size` raised 2 kb → 8 kb**, mirrored across all three configs;
-      `esphome config` clean on each.
+- [x] **R13 — capture length. Fixed, but the first attempt targeted the wrong knob.**
+      `receive_symbols: 256` in all three configs (~512 entries). **`buffer_size` is not
+      the per-frame ceiling** — it floors a queue of completed events awaiting the main
+      loop (`remote_receiver_rmt.cpp:107`), and its esp32 default is already `10000b`
+      (`__init__.py:112`), so the original "raise 2 kb → 8 kb" was still *below* stock and
+      fixed nothing. The real ceiling is `receive_symbols`, the `rmt_receive` length
+      (`:109`), default 192 × 2 pulses per symbol ≈ **384 entries** — under the 450 an
+      HVAC frame reaches, truncating silently. `buffer_size` now pinned at `10000b`
+      explicitly so it is not quietly reduced again. All three configs validate; the
+      round-trip firmware recompiles clean.
+- [x] **Noise guard added to the R1 latch.** `filter_symbols` defaults to 0, so the ISR
+      filter rejects nothing and any blip past the 50 µs `filter` arrives as a short
+      array. Unguarded, one spurious burst would latch a 2-entry capture, discard the real
+      remote press, and transmit garbage — reported as "R1 PARTIAL", misdiagnosing the
+      gate. Now requires ≥10 entries and logs what it ignored.
 - [ ] **R11 — Measure real array lengths** for whatever remotes are actually in the room.
       Partly answered already: 30–70 typical, 100–450 for HVAC. What is unknown is which
       of those this household has.

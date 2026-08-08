@@ -9,9 +9,14 @@ unticked items genuinely haven't been exercised yet.
 - [x] Device joins WiFi (2.4GHz); web server reachable at
       `http://ir-blaster-livingroom.local/` (DHCP + router reservation).
 - [x] Adopted in Home Assistant. *(Corrected 2026-08-07 — this was stale, not pending.
-      Evidence is the **existence** of `button.ir_blaster_living_room_fan_power`: HA only
-      creates that entity from a list-entities response over the ESPHome integration, and
-      `home-assistant-pi/automations/bangle_irblast.yaml` presses it by `entity_id`.)*
+      Evidence is the **ESPHome integration config entry**: `core.config_entries` pins
+      "IR Blaster (Living Room)" to `host: 192.168.0.6`, recorded at
+      `home-assistant-pi/CHANGELOG.md:1446` and `:1468`. That is the integration record
+      itself, so it settles adoption directly.
+      The existence of `button.ir_blaster_living_room_fan_power` is **corroborating, not
+      dispositive** — an earlier draft of this line said HA "only" creates such entities
+      from the ESPHome integration, which is false: template helpers and MQTT discovery
+      create `button.*` entities too.)*
 - [x] **HA can DELIVER an action to the device over the encrypted API.** *(R15 — CLOSED
       2026-08-07 by owner observation: pressing `button.ir_blaster_living_room_fan_power`
       from HA toggled the fan, and it has been in that state for some time. The owner also

@@ -43,7 +43,11 @@ remote_receiver:
   dump: all             # log decoded protocol+code AND raw timings
   tolerance: 25%
   idle: 25ms
-  buffer_size: 8kb      # mirrored from ir-blaster-livingroom.yaml (R13, was 2kb)
+  # Mirrored from ir-blaster-livingroom.yaml. receive_symbols is the per-frame ceiling
+  # (default 192 -> ~384 entries); buffer_size is event-queue depth and its esp32 default
+  # is already 10000b. An earlier revision raised buffer_size believing it was the former.
+  receive_symbols: 256
+  buffer_size: 10000b
 
 # IR TRANSMIT — 5990 green wire (IRout, emitter drive) -> GPIO27.
 # Declared purely so ESPHome drives this pin as an output (idle low), holding the

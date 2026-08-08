@@ -99,12 +99,44 @@ remote_receiver:
   dump: all
   tolerance: 25%
   idle: 25ms
-  buffer_size: 8kb         # R13: raised from 2kb. 2kb ceilings capture around the fan's
-                           # 47 entries; HVAC/AC remotes send full state in one frame and
-                           # commonly run 100-450 entries.
+
+  # ── FRAME LENGTH IS receive_symbols, NOT buffer_size ──────────────────────
+  # An earlier revision raised buffer_size and claimed it fixed truncation. It does
+  # not, on two counts, both checked against the pinned 2026.6.2 in .venv:
+  #   1. buffer_size only FLOORS a queue of completed events awaiting the main loop --
+  #      remote_receiver_rmt.cpp:107, buffer_size = max((event_size + receive_size) * 2,
+  #      buffer_size_). It is queue depth, not capture length.
+  #   2. Its esp32 default is already 10000b (__init__.py:112), so the "raise" to 8kb
+  #      was still a REDUCTION below stock.
+  # The real per-frame ceiling is receive_symbols, passed as the rmt_receive length at
+  # remote_receiver_rmt.cpp:109. Default 192, and each RMT symbol carries 2 pulses
+  # (decode_rmt_ reserves item_count * 2), so stock tops out near 384 entries -- under
+  # the 450 an HVAC frame can reach, and it truncates SILENTLY.
+  receive_symbols: 256     # 256 symbols -> ~512 entries. Covers 450-entry HVAC frames.
+                           # If the log shows "out of RMT symbol memory", lower this or
+                           # raise rmt_symbols (default 192; the ESP32 has 512 total and
+                           # remote_transmitter takes a share).
+  buffer_size: 10000b      # the esp32 default, stated explicitly so it is not silently
+                           # reduced again. Event-queue depth -- guards "Buffer overflow"
+                           # when the main loop stalls. NOT capture length.
+  # MIRRORED in ir-blaster-livingroom.yaml and ir-wiring-test.yaml -- change all three.
+
   on_raw:
     then:
       - lambda: |-
+          // Noise guard, BEFORE the latch. filter_symbols defaults to 0, so the ISR's
+          // symbol-count filter rejects nothing, and any blip past the 50us filter
+          // arrives here as a short array. docs/wiring.md and ir-wiring-test.yaml both
+          // document "constant garbage with no button press" as a live symptom on this
+          // rig. Without this, one spurious burst latches a 2-entry array, DISCARDS the
+          // real remote press, and transmits garbage 3s later -- which the runbook would
+          // have the human record as "R1 PARTIAL", misdiagnosing the one gate the whole
+          // plan is staked on.
+          if (x.size() < 10) {
+            ESP_LOGW("r1", "ignoring %d-entry noise burst (need >=10) -- see docs/wiring.md",
+                     (int) x.size());
+            return;
+          }
           if (id(have_capture)) return;         // first wins; also blocks self-capture
           id(captured_code) = x;
           id(have_capture) = true;

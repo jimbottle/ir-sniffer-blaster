@@ -69,13 +69,17 @@ remote_receiver:
   dump: all             # logs decoded protocol+code AND raw timings
   tolerance: 25%
   idle: 25ms
-  # 8kb, raised from 2kb (R13). 2kb is fine for the fan's 47 entries but ceilings
-  # anything longer, and a truncated capture is SILENT — you get a short array that
-  # looks valid and replays as nothing. HVAC/AC remotes send mode+temp+fan+timer as
-  # one frame and commonly run 100-450 entries, so 2kb would have bitten the first
-  # time a mini-split was pointed at this.
+  # FRAME LENGTH IS receive_symbols, NOT buffer_size. An earlier revision of this file
+  # raised buffer_size 2kb -> 8kb and claimed it fixed silent truncation; it did not.
+  # buffer_size only floors a queue of completed events awaiting the main loop
+  # (remote_receiver_rmt.cpp:107), and its esp32 default is already 10000b
+  # (__init__.py:112) — so 8kb was still below stock. The per-frame ceiling is
+  # receive_symbols, passed as the rmt_receive length (remote_receiver_rmt.cpp:109).
+  # Default 192, times 2 pulses per symbol, tops out near 384 entries.
+  receive_symbols: 256  # ~512 entries; covers the 450-entry HVAC frames R11 is sampling for
+  buffer_size: 10000b   # esp32 default, stated so it is not silently reduced again.
+                        # Event-queue depth, NOT capture length.
   # MIRRORED in ir-wiring-test.yaml and ir-roundtrip-test.yaml — change all three.
-  buffer_size: 8kb
 
 # IR TRANSMIT (replay / spoof) — 5990 green wire (IRout, emitter drive) -> GPIO27
 remote_transmitter:
