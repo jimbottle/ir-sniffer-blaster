@@ -45,9 +45,22 @@ array replays and actuates the fan. **Runs entirely on-device — no Home Assist
 
 ### 1. Flash
 
+**Note the leading dot — the venv is `.venv`, not `venv`.** There is no system-wide
+`esphome` on this machine, so a bare `esphome ...` is `command not found`.
+
+```bash
+source .venv/bin/activate      # then plain `esphome ...` works for the session
+esphome run ir-roundtrip-test.yaml
+```
+
+or without activating:
+
 ```bash
 .venv/bin/esphome run ir-roundtrip-test.yaml
 ```
+
+**`run` flashes and then streams the log itself**, so step 2 below is already covered —
+it is only there for reconnecting if you close the terminal.
 
 OTA is attempted first. **OTA has never been exercised on this board** — both prior
 flashes were USB — so this doubles as the OTA test.
@@ -57,6 +70,8 @@ flashes were USB — so this doubles as the OTA test.
   PSU is power-only and **cannot flash**. Record OTA as failed, not as untested.
 
 ### 2. Watch the log
+
+`run` already does this. Only needed to reconnect:
 
 ```bash
 .venv/bin/esphome logs ir-roundtrip-test.yaml

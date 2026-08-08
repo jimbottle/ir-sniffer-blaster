@@ -12,14 +12,17 @@ unticked items genuinely haven't been exercised yet.
       Evidence is the **existence** of `button.ir_blaster_living_room_fan_power`: HA only
       creates that entity from a list-entities response over the ESPHome integration, and
       `home-assistant-pi/automations/bangle_irblast.yaml` presses it by `entity_id`.)*
-- [ ] **HA can DELIVER an action to the device over the encrypted API.** *(Separate claim
-      from adoption above, and still open — R15. Adoption proves HA enumerated the device;
-      it does not prove a command arrives. **No HA-side artefact can settle this** —
+- [x] **HA can DELIVER an action to the device over the encrypted API.** *(R15 — CLOSED
+      2026-08-07 by owner observation: pressing `button.ir_blaster_living_room_fan_power`
+      from HA toggled the fan, and it has been in that state for some time. The owner also
+      confirmed nothing had been changed or flashed beforehand, so this is the standing
+      production firmware.
+      **This was an evidence gap, not a fault.** Adoption proves HA enumerated the device;
+      it does not prove a command arrives, and **no HA-side artefact can settle it** —
       ESPHome buttons are stateless, so `button.*` state is HA's own locally-generated
       `last_pressed`, and `automation.last_triggered` only says the automation started.
-      Three revisions of `docs/bangle-integration.md` got this wrong. Acceptable evidence
-      is a human watching the fan toggle on an HA button press, a device-side log line, or
-      a device-side transmit counter moving.)*
+      Three revisions of `docs/bangle-integration.md` cited one of those and were wrong.
+      What closed it is the one thing none of them had: a human watching the fan.)*
 - [ ] OTA update succeeds (a second `esphome run` over the network). *(Not yet done —
       both flashes were over USB; OTA is configured but unexercised.)*
 

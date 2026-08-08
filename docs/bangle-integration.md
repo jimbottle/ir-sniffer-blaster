@@ -92,8 +92,8 @@ discipline of [`validation.md`](validation.md).
 | That trigger **fires on this hardware** | **UNVERIFIED.** See `README.md` acceptance criteria: the ESPHome `remote_receiver` dump has not been observed at all. RX is proven only via the Arduino diagnostics, a different code path |
 | A capture can round-trip `on_raw` → `send_raw_ir` → device responds | **UNVERIFIED.** This is the single test that validates the whole premise |
 | The board is **adopted in Home Assistant** | **PROVEN**, and `validation.md` is stale on this — it still lists adoption unticked. Evidence is the *existence* of `button.ir_blaster_living_room_fan_power`, which HA only creates by enumerating the device over the ESPHome integration, and `automations/bangle_irblast.yaml` presses it by `entity_id`. Correcting `validation.md` is R12 |
-| **HA → ESP32 over the encrypted API** delivers an action | **UNVERIFIED.** HA queues the command; nothing observed shows the device received it. See the standing rule below. Closing it is cheap — R15 |
-| 🚨 **STANDING RULE: no HA-side artefact proves this hop.** | **Three consecutive revisions of this doc asserted it and were wrong, each on a different artefact.** Do not assert it again without device-side or physical evidence. What has been tried and does **not** work: (1) `automation.…last_triggered` — proves the automation started; (2) `button.….state` — **ESPHome buttons are stateless.** No `ButtonStateResponse` exists anywhere in the vendored protocol (zero hits across `site-packages`) and `ButtonCommandRequest` is fire-and-forget with no reply (`aioesphomeapi/client.py:1661`), so the state is a **locally-generated `last_pressed`** written by HA's own `ButtonEntity`; (3) `my-bangle/apps/irblast/NOTES.md:43` *"A tap on the watch fired the fan"* — **not an independent observation.** The same sentence says *"Measured from Home Assistant rather than taken on report"*, and that note's own chain table ends at `webhook → automation → button`, with no `button → ESP32 → fan` leg. It is a summary of artefacts (1) and (2) |
+| **HA → ESP32 over the encrypted API** delivers an action | **PROVEN 2026-08-07 (R15 closed).** The owner pressed `button.ir_blaster_living_room_fan_power` in HA and **watched the fan toggle**, on the standing production firmware with nothing flashed or changed beforehand. That is the physical observation the standing rule below demands — and note it is the *only* citation of the four attempted that qualifies |
+| 🚨 **STANDING RULE: no HA-side artefact proves this hop.** | *Kept after R15 closed, because the rule is what got it closed correctly.* **Three consecutive revisions asserted this hop and were wrong, each on a different artefact; the fourth attempt was a human watching the fan, and that is the one that held.** The hop was working the whole time — this was an evidence gap, never a fault — but "it probably works" is not what this table records. Do not assert this class of claim without device-side or physical evidence. What was tried and does **not** work: (1) `automation.…last_triggered` — proves the automation started; (2) `button.….state` — **ESPHome buttons are stateless.** No `ButtonStateResponse` exists anywhere in the vendored protocol (zero hits across `site-packages`) and `ButtonCommandRequest` is fire-and-forget with no reply (`aioesphomeapi/client.py:1661`), so the state is a **locally-generated `last_pressed`** written by HA's own `ButtonEntity`; (3) `my-bangle/apps/irblast/NOTES.md:43` *"A tap on the watch fired the fan"* — **not an independent observation.** The same sentence says *"Measured from Home Assistant rather than taken on report"*, and that note's own chain table ends at `webhook → automation → button`, with no `button → ESP32 → fan` leg. It is a summary of artefacts (1) and (2) |
 | `homeassistant.event` reaches HA **from** the device | **UNVERIFIED**, but low risk — and deliberately *not* grounded on the disputed hop. The justification is entity **enumeration**: HA only creates `button.ir_blaster_living_room_fan_power` by receiving a list-entities response *from* the device, which is device→HA traffic on the same persistent connection an event would use |
 | **OTA** works on this board | **UNVERIFIED.** Both flashes to date were USB. The capture firmware change needs at least one flash — budget for USB and treat wireless as unproven |
 | `send_raw_ir` transmits | **UNVERIFIED.** `validation.md` — transmit was proven via the `transmit_raw` button, not the HA action |
@@ -386,14 +386,11 @@ Runnable without the watch and without the Bangle agent. **R1 blocks everything.
       ESPHome's own `web_server`, which bypasses HA's native API entirely. If so, it is
       not evidence for R15 and the line should say which REST it means. Three rows have
       now turned out stale or ambiguous; assume the rest are too.
-- [ ] **R15 — Prove HA → ESP32 delivery, or record it as open.** *(New; the hop three
-      revisions asserted without evidence.)* The test is ~10 seconds: press
-      `button.ir_blaster_living_room_fan_power` **from Home Assistant** and watch whether
-      the fan physically toggles. Acceptable evidence is a human observing the fan, a
-      device-side log line, or `tx_counter` moving — **never** an HA-side timestamp.
-      Gates Phase 2, not Phase 0 (which runs on-device with no HA in the loop).
-- [ ] **R13 — Raise `buffer_size` past 2 kb** and confirm the config still validates.
-      Do it before anyone tries to capture an HVAC frame.
+- [x] **R15 — HA → ESP32 delivery. CLOSED 2026-08-07, PASS.** Owner pressed
+      `button.ir_blaster_living_room_fan_power` in HA and watched the fan toggle, on the
+      standing production firmware with nothing flashed beforehand. Phase 2 is unblocked.
+- [x] **R13 — `buffer_size` raised 2 kb → 8 kb**, mirrored across all three configs;
+      `esphome config` clean on each.
 - [ ] **R11 — Measure real array lengths** for whatever remotes are actually in the room.
       Partly answered already: 30–70 typical, 100–450 for HVAC. What is unknown is which
       of those this household has.
@@ -458,12 +455,12 @@ they want to be batched into one sitting. Answers feed directly into Phase 2 siz
 
 Still open:
 
-- [ ] **H5 — Physical access, now needed in two sittings.** Deferred by the H6
-      hardware-first decision, but the *hardware* sitting is now the near-term one:
-      - **Sitting 1 (hardware, near-term):** at the board. Flash, press a remote at it,
-        watch whether the fan toggles. Covers R1, R15 and R13.
+- [ ] **H5 — Physical access, two sittings. Sitting 1 IN PROGRESS.**
+      - **Sitting 1 (hardware, now):** R15 ✅ and R13 ✅ done. **R1 is the remaining
+        item** — flash `ir-roundtrip-test.yaml`, press the fan remote once, watch the fan.
+        The flash doubles as the OTA test. See `docs/hardware-gate-runbook.md`.
       - **Sitting 2 (watch, later):** watch on the phone, Chrome's device chooser needs
-        a human click. Covers the Bangle agent's R2–R10. Gated on sitting 1 passing.
+        a human click. Covers the Bangle agent's R2–R10. Gated on R1 passing.
 - [ ] **H7 — Does the watch's `irblast.json` hold the rotated id?** The single button is
       reported working, which implies yes, but the rotation runbook lists re-flashing the
       watch as part of the change. **Not blocking the hardware work**, but confirm before
