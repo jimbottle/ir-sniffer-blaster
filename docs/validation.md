@@ -8,8 +8,18 @@ unticked items genuinely haven't been exercised yet.
 - [x] `esphome run` compiles with no errors.
 - [x] Device joins WiFi (2.4GHz); web server reachable at
       `http://ir-blaster-livingroom.local/` (DHCP + router reservation).
-- [ ] Adopted in Home Assistant. *(Add in progress — the encrypted API is up, the
-      device isn't confirmed added yet.)*
+- [x] Adopted in Home Assistant. *(Corrected 2026-08-07 — this was stale, not pending.
+      Evidence is the **existence** of `button.ir_blaster_living_room_fan_power`: HA only
+      creates that entity from a list-entities response over the ESPHome integration, and
+      `home-assistant-pi/automations/bangle_irblast.yaml` presses it by `entity_id`.)*
+- [ ] **HA can DELIVER an action to the device over the encrypted API.** *(Separate claim
+      from adoption above, and still open — R15. Adoption proves HA enumerated the device;
+      it does not prove a command arrives. **No HA-side artefact can settle this** —
+      ESPHome buttons are stateless, so `button.*` state is HA's own locally-generated
+      `last_pressed`, and `automation.last_triggered` only says the automation started.
+      Three revisions of `docs/bangle-integration.md` got this wrong. Acceptable evidence
+      is a human watching the fan toggle on an HA button press, a device-side log line, or
+      a device-side transmit counter moving.)*
 - [ ] OTA update succeeds (a second `esphome run` over the network). *(Not yet done —
       both flashes were over USB; OTA is configured but unexercised.)*
 
@@ -25,6 +35,12 @@ unticked items genuinely haven't been exercised yet.
 
 - [x] Transmitter: a captured code, fired from a button, actuates the real device.
       (The `Fan Power` button toggled the fan, over the network via REST.)
+      **⚠️ WHICH REST is unrecorded, and it matters (R12).** This device exposes two:
+      ESPHome's own `web_server` on port 80, and Home Assistant's API. If it was the
+      former — the likelier reading, since `web_server` is configured and needs no
+      credentials — then this line proves the emitter works but says **nothing** about
+      the HA path, and it is not evidence for R15. Whoever ran it should say which, or
+      it should be re-run deliberately through HA.
 - [ ] `send_raw_ir` service transmits a known raw array successfully. *(Not yet fired —
       transmit was proven via the `transmit_raw` button, not the HA service.)*
 

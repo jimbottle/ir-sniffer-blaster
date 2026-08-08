@@ -43,7 +43,7 @@ remote_receiver:
   dump: all             # log decoded protocol+code AND raw timings
   tolerance: 25%
   idle: 25ms
-  buffer_size: 2kb
+  buffer_size: 8kb      # mirrored from ir-blaster-livingroom.yaml (R13, was 2kb)
 
 # IR TRANSMIT — 5990 green wire (IRout, emitter drive) -> GPIO27.
 # Declared purely so ESPHome drives this pin as an output (idle low), holding the

@@ -9,8 +9,51 @@ library, and covers what would be needed for the watch to participate in capture
 Two repos and two agents are involved. The boundary is stated at the end, and the
 task split is under [Before we begin](#before-we-begin).
 
-> **Status: planning only.** Nothing here is built. The measurement session has not
-> been run, so most sizing decisions below are open.
+> **Status: decisions taken 2026-08-07, build starting.** The measurement session has
+> not been run, so sizing decisions remain open. Everything else below is settled.
+
+## Decisions taken — 2026-08-07
+
+Owner decisions, recorded so neither agent re-litigates them. Each supersedes the
+open question of the same name.
+
+| # | decision | consequence |
+|---|---|---|
+| **H2** | **Replay-only v1.** Capture is not armed from the wrist | The firmware `on_raw` path and the HA write path are **still in scope** — arming moves to an HA dashboard toggle. Without them the library cannot grow |
+| **H1** | **Everything remote.** The project must work wherever the board is online and HA is reachable | Supersedes "split the ids" — see the revised exposure model below. No second webhook |
+| **H3** | **Free-form names with enforced constraints** | Naming happens in HA with a real keyboard, since H2 means the watch never names anything. `short` ≤14 enforced on the write path; `device` is a grouping string, not a controlled enum. **H3 as a vocabulary question dissolves** |
+| **H4** | **Build the transmit counter** | ESP32-side, proves IR left the LED. Two round trips per fire, pending R7 |
+| **H6** | **Hardware first, then measure** | R1/R15/R13 before the watch session. If R1 fails the premise is dead and the measurement session would have been wasted |
+| — | **Board access: on WiFi, USB available** | OTA is attempted first; a USB-C **data** cable is the fallback. The bundled PSU is power-only and cannot flash |
+
+### Revised exposure model (supersedes "Split the ids")
+
+"Everything remote" rules out the LAN-only read plan. It also rules out plain
+`/local/` paths: those URLs are guessable, so an Access bypass on them would publish
+the code library — an inventory of the room's devices — to the internet with **no
+credential at all**.
+
+```
+READS   /local/ir-<32 hex>/codes.json     Access bypass on the SECRET PREFIX
+        /local/ir-<32 hex>/status.json    (one destination covers both)
+
+FIRE    /api/webhook/<blast-id>?code=x    existing webhook, unchanged
+
+WRITE   HA dashboard  ->  Access LOGIN    authenticated, not a bearer URL
+ARM     HA dashboard  ->  Access LOGIN
+```
+
+- **Reads use a capability URL** — the same trust model as the existing webhook id, a
+  128-bit secret in the path that is never published. The secret is a *directory*, so
+  one Access destination covers both files.
+- **Writes go through the authenticated dashboard**, not a bearer URL. This is
+  *stronger* than the superseded second-webhook plan: the one class of endpoint that
+  mutates state gets a real login instead of a shared secret.
+- **Two Access destinations total** — the existing webhook, plus the secret prefix.
+- The secret directory is subject to the same rules as the webhook id: generated on
+  the Pi, never in git, never in a session. Rotation is a two-place change (the
+  filesystem path and the Access destination), exactly as
+  `secrets.example.yaml` documents for the webhook.
 
 ## Architecture
 
@@ -216,45 +259,43 @@ could never be reached.
 
 ### Endpoints
 
+*Reflects the H1 decision: everything works remote. Supersedes the earlier LAN-only
+read plan.*
+
 | endpoint | shape | exposure | notes |
 |---|---|---|---|
-| list | `GET /local/ir-codes.json` | **LAN only** | HA serves `www/` unauthenticated on the LAN. From outside it is behind Access. Regenerated on every library write |
-| fire | `GET /api/webhook/<blast-id>?code=<slug>` | **LAN + away** | The one Access-bypassed path. **name lookup only** |
-| status | `GET /local/ir-status.json` | **LAN only** | `{tx_counter, last_slug, last_fired_at, last_error}` |
+| list | `GET /local/ir-<secret>/codes.json` | **LAN + away** | Access bypass on the secret prefix. Regenerated on every library write |
+| fire | `GET /api/webhook/<blast-id>?code=<slug>` | **LAN + away** | Existing webhook, unchanged. **name lookup only** |
+| status | `GET /local/ir-<secret>/status.json` | **LAN + away** | `{tx_counter, last_slug, last_fired_at, last_error}` |
+| write / arm | HA dashboard | **LAN + away, authenticated** | Behind an Access **login**, not a bearer URL |
 
-**⚠️ The three endpoints do not share one exposure regime, and v1 ships that way
-deliberately.** Fire is bypassed through Cloudflare Access on its exact path; list and
-status are `/local/` static files with no bypass. **So from away the watch can fire but
-cannot read the library or poll the counter.** Consequences, stated here rather than
-left for Phase 3 to discover:
+**All three watch-facing endpoints share one regime, and the secret is what makes that
+safe.** The path segment is a 128-bit capability — the same model as the webhook id.
+A plain `/local/ir-codes.json` would have been a guessable path with no credential;
+bypassing Access on *that* would publish the library to the internet.
 
-- **Away-firing works, but blind.** No confirmation, and the menu comes from the watch's
-  cached copy. That is acceptable for v1 — it is exactly today's behaviour plus a menu —
-  but it means H4's confirmation answer is **LAN-only**, and the honest-UI argument has
-  to say so.
-- **An Access challenge returns a login page, not JSON.** With no status code on this
-  transport, a 302-to-HTML is indistinguishable from data: it will fail `JSON.parse`, or
-  worse half-parse (the R3 failure mode), with no way to report why. **The watch must
-  treat an unparseable list/status response as "unreachable", never as an empty library.**
-  This is why R5 and new question A (does the relay follow redirects?) matter more than
-  they first looked.
-- **The upgrade path, if away-reads are wanted later:** two more Access applications,
-  exact-path scoped to `/local/ir-codes.json` and `/local/ir-status.json`. Cost is that
-  the code library — an inventory of the room's devices — becomes readable by anyone on
-  the internet who has the URL. Not secret, but not nothing. **Not recommended for v1**;
-  noted so it is not rediscovered as a surprise.
+**One failure mode survives the fix and the watch must handle it.** If the secret is
+wrong, rotated, or Access is misconfigured, the response is a **302 to a login page —
+HTML, not JSON**. With no status code on this transport that is indistinguishable from
+data: it will fail `JSON.parse`, or worse half-parse (the R3 failure mode), with no way
+to report why. **The watch must treat an unparseable list/status response as
+"unreachable", never as an empty library.** This is why R5 and new question A (does the
+relay follow redirects?) matter more than they first looked.
 
 **Never accept a raw array over the webhook.** `?code=<slug>` is bounded to codes you
 captured. `?raw=1280,-420,...` would be arbitrary IR transmission by anyone holding the
 id, drive-by triggerable via `<img src>` exactly as `automations/bangle_irblast.yaml`
 describes. The arbitrary-array path stays on the authenticated HA API.
 
-**Split the ids.** Blast keeps the existing rotated id and `local_only: false` — firing
-from away is owner-confirmed twice. Any write/capture endpoint gets a **second** webhook,
-`local_only: true`, so writes require LAN presence. Cost: a second Cloudflare Access
-destination, which must be an exact path — `home-assistant-pi` warns that a
-`/api/webhook/` **prefix** bypass would also expose the live `Pixel 9` `mobile_app`
-webhook, which accepts `call_service`.
+**~~Split the ids~~ — SUPERSEDED by the H1 decision.** There is no second webhook. The
+one endpoint that mutates state goes through the authenticated dashboard instead, which
+is stronger than a second bearer URL would have been. The webhook count stays at one.
+
+**The `/api/webhook/` prefix rule still stands, and applies to the new secret prefix
+too.** `home-assistant-pi` warns that a `/api/webhook/` **prefix** bypass would expose
+the live `Pixel 9` `mobile_app` webhook, which accepts `call_service`. The reason a
+prefix bypass is acceptable for `/local/ir-<secret>/` is *only* that the prefix itself
+contains the secret and has no siblings. **Never** widen it to `/local/`.
 
 **The confirmation mechanism.** `tx_counter` is incremented **on the ESP32**, not in HA,
 and surfaced through the API. That distinction is the whole value: HA's `last_triggered`
@@ -410,37 +451,26 @@ they want to be batched into one sitting. Answers feed directly into Phase 2 siz
 
 ## Human — owner decisions and physical access
 
-Agents should not settle these alone.
+- [x] **H1, H2, H3, H4, H6 — DECIDED 2026-08-07.** See
+      [Decisions taken](#decisions-taken--2026-08-07). Do not re-litigate.
+- [x] **Board access — answered.** On WiFi, USB-C data cable available as the OTA
+      fallback.
 
-- [ ] **H5 — Physical access for the measurement session.** Phase 1 needs the watch on
-      the phone plus somebody to open the BLE window; Chrome's device chooser needs a
-      human click. Roughly one sitting, and it gates the Bangle agent's entire list above.
-- [ ] **H6 — Sequencing: close the hardware acceptance criteria first?** The open items
-      are the **receiver dump** (R1), **HA→ESP32 delivery** (R15) and **OTA**. Adoption
-      came off the list; delivery went back on after review. Both agents recommend closing
-      R1 before any UI work, and R15 is ~10 seconds so it should just be done. Needs a
-      decision because it front-loads hardware work before anything visible ships.
-- [ ] **H1 — Widening the webhook.** *Reduced in scope this revision* — rotation already
-      happened, so this is no longer "rotate first." What remains: is broadening the id
-      from one action to a whole library acceptable, and do you want the **split-id**
-      proposal (blast stays `local_only: false`, writes go to a second `local_only: true`
-      webhook)? Costs a second Cloudflare Access destination.
-- [ ] **H2 — Is watch-initiated capture in scope at all?** Both agents now recommend
-      **no for v1**. Needs an explicit decision so the HA side is not designed around a
-      flow that is never built. Note this is *not* "no capture in v1" — the firmware and
-      HA capture paths stay; only arming from the wrist is dropped.
-- [ ] **H3 — What is the naming vocabulary?** `textinput` is not installed and is
-      unpleasant at 176×176, so the practical option is two menu picks — device × function
-      — from fixed lists shipped in the JSON. That constrains captures to a predefined
-      vocabulary. Who maintains it, and how does a genuinely new device get added?
-      **Better designed in deliberately than discovered later.**
-- [ ] **H4 — Confirm the transmit-counter approach.** *Answered in principle this
-      revision* — an ESP32-side counter is exposable, and it proves the device acted
-      rather than that HA tried. What needs a decision is the cost: two round trips per
-      fire, and a static-file rewrite per press. Fine at this volume, not free.
+Still open:
+
+- [ ] **H5 — Physical access, now needed in two sittings.** Deferred by the H6
+      hardware-first decision, but the *hardware* sitting is now the near-term one:
+      - **Sitting 1 (hardware, near-term):** at the board. Flash, press a remote at it,
+        watch whether the fan toggles. Covers R1, R15 and R13.
+      - **Sitting 2 (watch, later):** watch on the phone, Chrome's device chooser needs
+        a human click. Covers the Bangle agent's R2–R10. Gated on sitting 1 passing.
 - [ ] **H7 — Does the watch's `irblast.json` hold the rotated id?** The single button is
       reported working, which implies yes, but the rotation runbook lists re-flashing the
-      watch as part of the change. Worth confirming before anything is built on top.
+      watch as part of the change. **Not blocking the hardware work**, but confirm before
+      the watch app is rebuilt on top of it.
+- [ ] **New — generate the read secret on the Pi.** Same discipline as the webhook id:
+      `openssl rand -hex 16` on the Pi, never through a session, never committed. Needed
+      before the read endpoints exist, not before the hardware work.
 
 ---
 

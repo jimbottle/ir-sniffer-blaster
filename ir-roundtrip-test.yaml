@@ -1,0 +1,147 @@
+# R1 — the round-trip test. THE test that validates the whole sniffer premise.
+#
+# Proves, in one press, that:
+#   1. ESPHome's remote_receiver actually fires on this hardware  (never observed before)
+#   2. on_raw: delivers a usable timing array                     (trigger verified in
+#      source only — remote_base/__init__.py:1220 — never seen fire here)
+#   3. that array feeds straight back into transmit_raw and ACTUATES THE REAL DEVICE
+#
+# Until this passes, every downstream plan in docs/bangle-integration.md is speculative.
+#
+# DELIBERATELY RUNS ENTIRELY ON-DEVICE. No Home Assistant in the loop, no code library,
+# no webhook. The capture goes straight back out the emitter. That is the point: it
+# tests the one unproven thing without depending on the HA hop (which is itself
+# UNVERIFIED — see R15). A failure here is unambiguous.
+#
+# ── HUMAN PROTOCOL ────────────────────────────────────────────────────────────
+#   1. Flash it:   esphome run ir-roundtrip-test.yaml
+#      (OTA is attempted first. OTA has NEVER been exercised on this board — both
+#       prior flashes were USB — so if it fails, use a USB-C DATA cable. The bundled
+#       Adafruit 4298 PSU is power-only and CANNOT flash.)
+#   2. Watch logs: esphome logs ir-roundtrip-test.yaml
+#   3. Point the fan remote at the 5990 and press POWER once.
+#   4. Watch the log for CAPTURED, then watch the FAN.
+#
+#   PASS  = the fan toggles ~3 s after your press, with no second remote press.
+#   FAIL, silent           -> receiver never fired. RX path is the problem, not on_raw.
+#   FAIL, CAPTURED but no  -> capture works, replay does not. Compare the logged array
+#         fan movement        against captured-codes/README.md; suspect shape or carrier.
+#
+# ⚠️ THIS OVERWRITES THE PRODUCTION FIRMWARE. It uses the same device name so OTA and
+#    mDNS resolve. Restore with:  esphome run ir-blaster-livingroom.yaml
+#
+# ⚠️ IT TRANSMITS BY ITSELF, once, 3 s after the first code it hears. That is the
+#    whole test. Do not run it pointed at anything you do not want actuated.
+
+esphome:
+  name: ir-blaster-livingroom          # same name so OTA + mDNS work; see warning above
+  friendly_name: IR Round-Trip Test (R1)
+  platformio_options:
+    upload_speed: 115200               # CH34x dies at the board default 921600
+
+esp32:
+  board: adafruit_feather_esp32_v2
+  framework:
+    type: arduino
+
+logger:
+  level: DEBUG
+
+# Network is here ONLY so the flash and the log stream can happen without a USB cable
+# and without someone sitting at the board. The test logic itself uses none of it.
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "IR-Blaster Fallback"
+    password: !secret ap_password
+
+captive_portal:
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+globals:
+  # The captured timings. std::vector<int32_t> is exactly what on_raw hands us and
+  # exactly what transmit_raw consumes — the round trip is the claim under test, so
+  # nothing here reshapes it. No copy, no reformat, no round to nearest.
+  - id: captured_code
+    type: std::vector<int32_t>
+    restore_value: no
+
+  # First capture wins. This ALSO stops self-capture: RX and TX share the 5990 board,
+  # so the receiver WILL hear our own replay. Without this latch the replay would be
+  # captured as a second code and the test would loop, firing the fan repeatedly.
+  - id: have_capture
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+  - id: replayed
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+# IR RECEIVE — 5990 white wire (IRin) -> GPIO14.
+#
+# MIRRORING RULE (see ir-wiring-test.yaml): these tuning values are duplicated from the
+# authoritative spec, ir-blaster-livingroom.yaml. Change them there and mirror here, or
+# this diagnostic silently tests a configuration the real firmware does not use.
+remote_receiver:
+  pin:
+    number: GPIO14
+    inverted: false        # 5990 output is buffered/demodulated; do NOT invert
+  dump: all
+  tolerance: 25%
+  idle: 25ms
+  buffer_size: 8kb         # R13: raised from 2kb. 2kb ceilings capture around the fan's
+                           # 47 entries; HVAC/AC remotes send full state in one frame and
+                           # commonly run 100-450 entries.
+  on_raw:
+    then:
+      - lambda: |-
+          if (id(have_capture)) return;         // first wins; also blocks self-capture
+          id(captured_code) = x;
+          id(have_capture) = true;
+
+          ESP_LOGI("r1", "CAPTURED %d entries", (int) x.size());
+          ESP_LOGI("r1", "Compare against captured-codes/README.md (fan = 47 entries):");
+
+          // Chunked. A 450-entry array is ~3 kB of text and would blow the log buffer
+          // on one line. 20 per line keeps each well inside it.
+          // snprintf, not std::to_string -- the latter is absent on this newlib build.
+          std::string s;
+          char buf[24];
+          for (size_t i = 0; i < x.size(); i++) {
+            snprintf(buf, sizeof(buf), "%d, ", (int) x[i]);
+            s += buf;
+            if ((i + 1) % 20 == 0) { ESP_LOGI("r1", "  %s", s.c_str()); s.clear(); }
+          }
+          if (!s.empty()) ESP_LOGI("r1", "  %s", s.c_str());
+
+# IR TRANSMIT — 5990 green wire (IRout) -> GPIO27.
+remote_transmitter:
+  pin: GPIO27
+  carrier_duty_percent: 50%
+
+interval:
+  - interval: 500ms
+    then:
+      - if:
+          condition:
+            lambda: 'return id(have_capture) && !id(replayed);'
+          then:
+            # Latch BEFORE the delay. The interval keeps firing during those 3 s, and
+            # without this the condition would still read true and stack up replays.
+            - lambda: 'id(replayed) = true;'
+            - logger.log: "r1: replaying the captured array in 3s -- WATCH THE FAN"
+            - delay: 3s
+            - remote_transmitter.transmit_raw:
+                code: !lambda 'return id(captured_code);'
+                carrier_frequency: 38000
+            - logger.log: "r1: REPLAY SENT. Fan moved? -> R1 PASSES. Nothing? -> replay is the problem, capture is not."

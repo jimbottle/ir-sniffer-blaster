@@ -69,7 +69,13 @@ remote_receiver:
   dump: all             # logs decoded protocol+code AND raw timings
   tolerance: 25%
   idle: 25ms
-  buffer_size: 2kb
+  # 8kb, raised from 2kb (R13). 2kb is fine for the fan's 47 entries but ceilings
+  # anything longer, and a truncated capture is SILENT — you get a short array that
+  # looks valid and replays as nothing. HVAC/AC remotes send mode+temp+fan+timer as
+  # one frame and commonly run 100-450 entries, so 2kb would have bitten the first
+  # time a mini-split was pointed at this.
+  # MIRRORED in ir-wiring-test.yaml and ir-roundtrip-test.yaml — change all three.
+  buffer_size: 8kb
 
 # IR TRANSMIT (replay / spoof) — 5990 green wire (IRout, emitter drive) -> GPIO27
 remote_transmitter:
