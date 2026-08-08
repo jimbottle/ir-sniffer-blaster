@@ -129,8 +129,19 @@ Recorded because the first attempt at R13 got this wrong in three config files a
   (`decode_rmt_` reserves `item_count * 2`) — so stock tops out near **384 entries**,
   under what an HVAC frame can reach, and it truncates **silently**.
 - Now `256` in all three configs → ~512 entries.
-- If the log ever shows **`out of RMT symbol memory`**, lower `receive_symbols` or raise
-  `rmt_symbols` (default 192; the ESP32 has 512 total and the transmitter takes a share).
+**If the log ever says `out of RMT symbol memory` — LOWER `rmt_symbols`, do not raise it.**
+
+That string comes only from `rmt_new_rx_channel` returning `ESP_ERR_NOT_FOUND`
+(`remote_receiver_rmt.cpp:49-51`), and the one field driving that allocation is
+`channel.mem_block_symbols = rmt_symbols_` (`:42`). So the fix is either:
+
+- **lower `rmt_symbols`** on the receiver (default 192 = 3 of the ESP32's 8 blocks), or
+- **lower `remote_transmitter`'s `rmt_symbols`** (esp32 default 64) to free blocks.
+
+**Raising `rmt_symbols` makes it permanent, and changing `receive_symbols` does nothing**
+— that one is a heap buffer and is never passed to `rmt_new_rx_channel`. An earlier
+revision of this runbook advised both wrong moves; it is corrected here rather than
+quietly, because it is the one troubleshooting line you would be reading at the board.
 
 ## Known risk — the API link has been seen dropping
 

@@ -113,12 +113,23 @@ remote_receiver:
   # (decode_rmt_ reserves item_count * 2), so stock tops out near 384 entries -- under
   # the 450 an HVAC frame can reach, and it truncates SILENTLY.
   receive_symbols: 256     # 256 symbols -> ~512 entries. Covers 450-entry HVAC frames.
-                           # If the log shows "out of RMT symbol memory", lower this or
-                           # raise rmt_symbols (default 192; the ESP32 has 512 total and
-                           # remote_transmitter takes a share).
+                           # NOTE: this sizes a HEAP buffer and the rmt_receive length
+                           # (remote_receiver_rmt.cpp:106,109). It is NOT passed to
+                           # rmt_new_rx_channel, so it has NO bearing on RMT block
+                           # allocation -- see the troubleshooting note below.
   buffer_size: 10000b      # the esp32 default, stated explicitly so it is not silently
                            # reduced again. Event-queue depth -- guards "Buffer overflow"
                            # when the main loop stalls. NOT capture length.
+
+  # IF THE LOG SAYS "out of RMT symbol memory": LOWER rmt_symbols, do not raise it.
+  # That string comes only from rmt_new_rx_channel returning ESP_ERR_NOT_FOUND
+  # (remote_receiver_rmt.cpp:49-51), and the single field driving that allocation is
+  # channel.mem_block_symbols = rmt_symbols_ (:42). So:
+  #   - lower rmt_symbols here (rx default 192 = 3 of the ESP32's 8 blocks), or
+  #   - lower remote_transmitter's rmt_symbols (esp32 default 64) to free blocks.
+  # RAISING rmt_symbols makes the failure permanent, and touching receive_symbols does
+  # nothing at all -- it is never passed to rmt_new_rx_channel. An earlier revision of
+  # this comment advised exactly the two wrong moves.
   # MIRRORED in ir-blaster-livingroom.yaml and ir-wiring-test.yaml -- change all three.
 
   on_raw:
