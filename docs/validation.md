@@ -66,11 +66,11 @@ unticked items genuinely haven't been exercised yet.
 
 ## Acceptance criteria (from the project brief)
 
-- [ ] Board boots, joins WiFi, and is reachable (HA + web server + OTA). *(Boots, joins
-      WiFi, web server reachable — confirmed. HA adoption and OTA not yet exercised.)*
-- [ ] Receiver: pressing any 38 kHz remote at the device prints decoded and raw IR to
-      the ESPHome log. *(RX hardware proven via Arduino diagnostics; the ESPHome
-      `remote_receiver` dump not yet observed — see Receive above.)*
+- [x] Board boots, joins WiFi, and is reachable (HA + web server + OTA). *(All confirmed
+      2026-08-09 — HA adoption and OTA both closed above.)*
+- [x] Receiver: pressing any 38 kHz remote at the device prints decoded and raw IR to
+      the ESPHome log. *(PASS 2026-08-09 — both forms; requires `inverted: true`. See
+      Receive above.)*
 - [x] Transmitter: a captured code can be replayed and the target device responds.
 - [x] A generic service exists to transmit arbitrary raw IR timing arrays programmatically.
       (`send_raw_ir` is defined and the config validates; not yet fired end-to-end — see above.)

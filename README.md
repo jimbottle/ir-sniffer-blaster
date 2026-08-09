@@ -5,12 +5,17 @@ A programmable, networked **infrared blaster for a single room**. It captures
 demand. Built on an **ESP32 Feather V2 running ESPHome**, controllable over the
 Home Assistant API, MQTT, REST, or a built-in web server.
 
-> **Status: built and working.** Flashed on real hardware (ESP32-PICO-V3-02), on
-> 2.4GHz WiFi via DHCP, reachable at `http://ir-blaster-livingroom.local/`. The
-> **emitter** is validated end to end — the **Fan Power** button fires a captured code
-> that toggles the fan over the network. RX hardware/wiring is proven via the Arduino
-> diagnostics; the ESPHome receiver dump, HA adoption, and OTA aren't exercised yet
-> (see acceptance criteria). Pinned to ESPHome 2026.6.2 (`requirements.txt`).
+> **Status: the full sniff → replay loop is proven on hardware (2026-08-09).** Flashed on
+> real hardware (ESP32-PICO-V3-02), on 2.4GHz WiFi via DHCP, reachable at
+> `http://ir-blaster-livingroom.local/`. The **emitter** was already proven; as of the R1
+> round-trip test the **receiver** is too — a live capture replayed through
+> `transmit_raw` and actuated the fan with no second press. HA adoption, HA→device
+> delivery and OTA are all now exercised. Pinned to ESPHome 2026.6.2 (`requirements.txt`).
+>
+> **Two long-standing claims in this README were wrong and are corrected below:** RX
+> polarity needs `inverted: true`, not `false`; and the fan remote is **not** an unknown
+> protocol — it decodes as **Symphony `data=0xD81, nbits=12`**. Both errors came from
+> asserting behaviour nobody had observed. See [`docs/validation.md`](docs/validation.md).
 
 ## What it does
 
@@ -22,16 +27,23 @@ Home Assistant API, MQTT, REST, or a built-in web server.
 
 ## Acceptance criteria
 
-- [ ] Board boots, joins WiFi, and is reachable (HA + web server + OTA). *(Boots, WiFi,
-      web server — confirmed. HA adoption + OTA not yet exercised.)*
-- [ ] Receiver: pressing any 38 kHz remote prints decoded and raw IR to the log. *(RX
-      hardware proven via Arduino diagnostics; ESPHome `remote_receiver` dump not yet
-      observed.)*
+- [x] Board boots, joins WiFi, and is reachable (HA + web server + OTA). *(All four
+      confirmed. HA adoption via the integration's `core.config_entries` record; OTA
+      exercised twice on 2026-08-09, 27.48 s then 11.17 s, with bootloader rollback
+      supported.)*
+- [x] Receiver: pressing any 38 kHz remote prints decoded and raw IR to the log. *(PASS
+      2026-08-09 — produced **both**, a 120-entry raw array and
+      `Received Symphony: data=0xD81, nbits=12`. **Requires `inverted: true`**; with
+      `false` every timing comes back sign-flipped and nothing decodes.)*
 - [x] Transmitter: a captured code can be replayed and the target device responds.
+- [x] **Round trip: a live capture replays and actuates the device.** *(PASS 2026-08-09,
+      on-device with no HA in the loop.)*
 - [x] A generic service exists to transmit arbitrary raw IR timing arrays programmatically.
+- [ ] **`send_raw_ir` fires end to end.** *(Still open — R1 proved `transmit_raw` invoked
+      from a lambda in the YAML, which is a different path from the HA-callable
+      `send_raw_ir` action. Defined and validating, never actually called.)*
 
-Transmit path fully proven on hardware. Still to confirm: the ESPHome receiver dump
-(`esphome logs`), HA adoption, OTA, and the `send_raw_ir` service. Full checklist:
+One item remains: the `send_raw_ir` HA action. Full checklist:
 [`docs/validation.md`](docs/validation.md).
 
 ## Quick start
@@ -96,7 +108,11 @@ for the GUI route.
   plausible**; they simply do not replay.
 - The included PSU (Adafruit 4298) is **power-only** and cannot flash the board.
   The first flash needs a separate **USB-C data cable**; updates after that can go OTA
-  over WiFi (OTA is configured but not yet exercised — both flashes so far were USB).
+  over WiFi. **OTA is proven** as of 2026-08-09 — exercised twice (27.48 s, then 11.17 s),
+  both reporting `OTA successful`, with `Bootloader rollback: supported` in the boot
+  banner. The dual-partition layout means a failed OTA writes the inactive slot and
+  leaves the running firmware intact, so there is no brick risk. See
+  [`docs/validation.md`](docs/validation.md).
 - The 5990 is **not I2C** despite the "STEMMA" cable label — wire the four leads to
   GPIOs, do not use the STEMMA QT port.
 

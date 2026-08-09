@@ -95,10 +95,14 @@ globals:
 remote_receiver:
   pin:
     number: GPIO14
-    # ⚠️ inverted: TRUE here, and it DELIBERATELY BREAKS THE MIRRORING RULE. This is the
-    # hypothesis under test in R1 run 2 — production and the docs still say `false` and
-    # stay that way until this is confirmed.
+    # ✅ CONFIRMED 2026-08-09 — inverted: true is now the authoritative value and this
+    # file MIRRORS ir-blaster-livingroom.yaml. The mirroring rule is SATISFIED, not
+    # broken. (An earlier revision of this comment said the opposite: it was written
+    # while `true` was still an untested hypothesis and production still said `false`.
+    # DO NOT "restore" this to `false` to satisfy mirroring — that reintroduces the
+    # silent-inversion bug described below.)
     #
+    # History, kept because it is the evidence:
     # MEASURED, R1 run 1, 2026-08-09: the capture came back as the committed fan code
     # with EVERY SIGN FLIPPED. 24 of 24 leading entries inverted, magnitudes matching to
     # 15.5us mean / 49us max:
@@ -111,10 +115,13 @@ remote_receiver:
     # is the thing that is wrong. A demodulator like the 5990's IRin idles HIGH and
     # pulls LOW during a carrier burst, so `inverted: false` records idle as mark.
     #
-    # This contradicts README.md and docs/troubleshooting.md, which both state in bold
-    # that `inverted: false` is correct and `true` is "only for a bare TSOP38238". That
-    # claim predates any observation of an ESPHome capture — the RX dump had never once
-    # been seen. Run 1 is the first, and it refutes it.
+    # R1 run 2 (this value): capture matched the committed array 24/24 on sign, within
+    # 19.2us mean / 29us max, decoded on the first press as Symphony data=0xD81 nbits=12,
+    # and the replay ACTUATED THE FAN. That is what confirmed it.
+    #
+    # README.md and docs/troubleshooting.md used to state in bold that `inverted: false`
+    # was correct and `true` was "only for a bare TSOP38238" — a claim that predated any
+    # observation of an ESPHome capture. BOTH ARE NOW CORRECTED to match this value.
     inverted: true
   dump: all
   tolerance: 25%

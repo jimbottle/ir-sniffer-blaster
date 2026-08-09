@@ -102,7 +102,15 @@ remote_transmitter:
 # Replay buttons — each fires a captured raw code out the emitter (GPIO27).
 # Capture new codes with arduino-tests/ir_rx_decode_test (see docs/capture-replay.md
 # and captured-codes/), convert IRremote mark/space to ESPHome signed (+mark/-space),
-# and add a button here. This remote decodes as UNKNOWN protocol, so we use raw.
+# and add a button here.
+#
+# ⚠️ CORRECTED 2026-08-09: this comment used to read "This remote decodes as UNKNOWN
+# protocol, so we use raw." It does NOT. That was an artefact of inverted RX polarity.
+# With `inverted: true` it decodes as Symphony data=0xD81 nbits=12, and ESPHome has a
+# matching `remote_transmitter.transmit_symphony` action taking data/nbits/
+# command_repeats. The raw array below still works and is left in place as the proven
+# path, but PREFER THE DECODED FORM for new codes — it is ~3 fields instead of a
+# 120-entry array. See captured-codes/README.md.
 button:
   - platform: template
     name: "Fan Power"                 # captured this session: hash 0xDA0AE878, verified toggling the fan
