@@ -112,6 +112,30 @@ remote_transmitter:
 # path, but PREFER THE DECODED FORM for new codes — it is ~3 fields instead of a
 # 120-entry array. See captured-codes/README.md.
 button:
+  # ── PHASE 2 PROBE: does the DECODED form actuate the fan? ─────────────────────
+  # Added 2026-08-09. R1 proved the raw path; this tests whether the compact decoded
+  # form is equivalent IN TRANSMIT, which is what the code library's schema hinges on.
+  #
+  # Evidence it should work: with inverted: true the fan remote decodes as Symphony
+  # data=0xD81 nbits=12, AND the device hearing its own transmission of the 47-entry raw
+  # array below decodes it as the SAME Symphony 0xD81/12 (observed 13:13:17 and
+  # 13:13:21 on 2026-08-09). So raw and decoded are the same signal on the RX side.
+  # This button tests the TX side.
+  #
+  # If this toggles the fan, the library becomes protocol-first: ~3 fields per code
+  # instead of a 120-entry array, roughly 50x smaller, which lands directly on the
+  # watch's response-size limit (R2). If it does NOT, the library stays raw-only and
+  # that is a much bigger payload problem to design around.
+  #
+  # command_repeats defaults to 2 and is left at the default deliberately — that is what
+  # the real remote does, and it is why one press captures ~2.5 frames.
+  - platform: template
+    name: "Fan Power (Symphony probe)"
+    on_press:
+      - remote_transmitter.transmit_symphony:
+          data: 0xD81
+          nbits: 12
+
   - platform: template
     name: "Fan Power"                 # captured this session: hash 0xDA0AE878, verified toggling the fan
     on_press:
