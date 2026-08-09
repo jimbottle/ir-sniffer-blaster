@@ -1,18 +1,32 @@
-# Hardware gate runbook — R1
+# Hardware gate runbook — ✅ COMPLETE
 
-**One thing left to do: R1.** R15 and R13 are closed (see [Already done](#already-done)).
+> **The hardware gate closed on 2026-08-09. R15 ✅ R13 ✅ R1 ✅ OTA ✅.**
+> Phase 2 is unblocked and the watch sitting is schedulable.
+>
+> **Nothing in the "YOUR PART" steps below needs doing again.** They are kept as the
+> record of how R1 was run and what it produced. What R1 found — RX polarity documented
+> backwards, and the fan remote decoding as Symphony rather than "unknown" — is in
+> [`docs/validation.md`](validation.md) and [`captured-codes/`](../captured-codes/).
+>
+> **Still open, and each is cheap:**
+> - **R11 sampling** — see [below](#r11-sampling--no-test-firmware-needed). No firmware
+>   needed; the correction to that section is the whole reason to still open this file.
+> - **Symphony TX probe** — flash production and press "Fan Power (Symphony probe)" in
+>   HA. Decides whether the code library can be protocol-first.
+> - **`send_raw_ir`** — the last unticked item in `validation.md`. HA → Developer Tools →
+>   Actions. No flash.
 
-R1 is **the** gate. Everything in `docs/bangle-integration.md` is speculative until it
-passes, which is why it runs before any watch work (the H6 decision, 2026-08-07).
+R1 was **the** gate: everything in `docs/bangle-integration.md` was speculative until it
+passed, which is why it ran before any watch work (the H6 decision, 2026-08-07).
 
-**Time:** ~10 minutes. **You need:** the fan remote, line of sight to the fan, and a
-USB-C **data** cable within reach in case OTA fails.
+**Time it took:** ~10 minutes plus one extra flash, since run 1 exposed the polarity bug.
 
 ---
 
-# YOUR PART — four steps
+# YOUR PART — four steps *(HISTORICAL — R1 passed, do not re-run)*
 
-Everything below this section is reference. These four steps are the whole job.
+The procedure as it was run on 2026-08-09. Kept for the record and in case R1 ever needs
+repeating on new hardware.
 
 ### Step 1 — Flash it
 
@@ -66,36 +80,48 @@ server and no HA buttons — leaving it flashed means the fan button in HA stops
 
 ---
 
-# Send me back
+# What run 1 and run 2 actually returned *(historical)*
 
-1. **The `CAPTURED` block**, whatever happened. I need it for two things beyond
-   pass/fail:
-   - **Does it match `captured-codes/README.md`?** The committed fan code is 47 entries
-     ending on a mark (`1230`) with no trailing space. A live capture may differ at the
-     edges — that tells me whether captures need normalising before storage.
-   - **R11 — how long do real arrays get?** The fan is my only sample.
-2. **Did OTA work?**
-3. Anything that looked wrong.
+- **Run 1 (`inverted: false`) — the capture was sign-flipped**, 0/24 matching the
+  known-good array. No decode, no actuation. This is what exposed the polarity bug.
+- **Run 2 (`inverted: true`) — 24/24 matching** within 19.2 µs mean / 29 µs max, decoded
+  on the first press as `Symphony data=0xD81, nbits=12`, and the replay **actuated the
+  fan**.
+- **OTA worked**, twice: 27.48 s then 11.17 s.
+- **A capture holds ~2.5 repeats, not one frame** — Symphony's `command_repeats` defaults
+  to 2. Single-frame extraction is a real library requirement.
 
 ---
 
-# Optional, while you are there — R11 sampling
+# R11 sampling — no test firmware needed
 
-Nearly free, and it sizes the whole library design. Skip it if R1 failed.
+**Corrected 2026-08-09.** This section used to say: *"The test image captures once per
+boot — a deliberate latch. To capture another remote, power-cycle the board, then press
+a different remote."* **That procedure is unnecessary — do not follow it.**
 
-The test image captures **once per boot** — a deliberate latch. To capture another
-remote, power-cycle the board, then press a different remote.
+The **production** firmware runs `dump: all`, so it already prints protocol + raw
+timings for **every** remote press, with no latch and no reboot between them. Sampling
+is just:
 
-Most useful, in order:
+1. Run production (`.venv/bin/esphome run ir-blaster-livingroom.yaml`) — it streams logs
+   after flashing, or reattach with `.venv/bin/esphome logs ir-blaster-livingroom.yaml`.
+2. Point each remote at the box and press. One press per button is enough.
+3. Copy the log.
+
+The once-per-boot latch is a property of `ir-roundtrip-test.yaml` only, and it exists
+there to stop the R1 test capturing its own replay. It has nothing to do with sampling.
+
+Nearly free, and it sizes the whole library design. Most useful, in order:
 
 1. **Any HVAC / mini-split / window AC remote.** These send full state in one frame and
    commonly run 100–450 entries against the fan's 47. If one exists in this house it is
    the single most informative capture — it is what `receive_symbols: 256` was set for,
    and the one case where the stock 192 would have silently truncated.
 2. TV or soundbar power.
-3. Anything that prints a **protocol name** (NEC, Sony, Samsung) rather than only raw
-   timings — that tells me whether the library must store decoded codes as well as raw
-   arrays.
+3. Anything that prints a **protocol name** rather than only raw timings. This is now the
+   highest-value thing sampling can find: the fan remote turned out to be **Symphony
+   `0xD81`/12**, not the "unknown" it was documented as, and a decoded record is ~3 fields
+   against a 120-entry array. Every remote that decodes is one that avoids raw entirely.
 
 ---
 
@@ -175,10 +201,13 @@ Two things follow, and the second one matters for how you record the result:
   say so *and* note that the link was measured lossy, rather than recording OTA as broken.
   Retrying once before falling back to USB is worth it.
 
-## What each outcome unblocks
+## What the outcome unblocked
 
-| outcome | next |
-|---|---|
-| **R1 PASS** | Phase 2 starts — HA code library, the three endpoints, the transmit counter. The watch sitting gets scheduled |
-| **R1 PARTIAL** (capture, no replay) | Diagnosable from the logged array. Likely carrier frequency or an edge artefact. Not fatal |
-| **R1 FAIL**, silent | A genuine fork: debug `remote_receiver` tuning, or fall back to a custom component. The Arduino sketches already prove the hardware works, so this would be software, not wiring |
+**R1 PASSED**, so: Phase 2 starts — the HA code library, the three endpoints, and the
+transmit counter — and the watch sitting (H5 sitting 2) is schedulable.
+
+*The other branches, kept in case R1 is ever re-run on new hardware:* a PARTIAL (capture
+but no replay) is diagnosable from the logged array, likely carrier frequency or an edge
+artefact, and not fatal. A silent FAIL is a genuine fork — debug `remote_receiver`
+tuning, or fall back to a custom component; the Arduino sketches already prove the
+hardware works, so it would be software rather than wiring.
