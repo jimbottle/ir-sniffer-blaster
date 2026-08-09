@@ -67,7 +67,7 @@ itself. You press the remote once; the *second* fan movement is the board.
 | `CAPTURED n entries`, then the fan toggles ~3 s later **on its own** | **R1 PASS** — the whole premise holds | Send me the log. Phase 2 starts |
 | `CAPTURED n entries`, fan never moves again | **R1 PARTIAL** — capture works, replay does not | Send me the `CAPTURED` block; it is diagnosable from the array |
 | `ignoring N-entry noise burst` repeatedly, no `CAPTURED` | Electrical noise on the RX line | See `docs/wiring.md`. Send me the log |
-| Nothing at all in the log when you press | **R1 FAIL** — the ESPHome receiver never fired | Send me the log. This is a real fork; see [outcomes](#what-each-outcome-unblocks) |
+| Nothing at all in the log when you press | **R1 FAIL** — the ESPHome receiver never fired | Send me the log. This is a real fork; see [outcomes](#what-the-outcome-unblocked) |
 
 ### Step 4 — Put the real firmware back
 
