@@ -28,16 +28,28 @@ unticked items genuinely haven't been exercised yet.
       `last_pressed`, and `automation.last_triggered` only says the automation started.
       Three revisions of `docs/bangle-integration.md` cited one of those and were wrong.
       What closed it is the one thing none of them had: a human watching the fan.)*
-- [ ] OTA update succeeds (a second `esphome run` over the network). *(Not yet done —
-      both flashes were over USB; OTA is configured but unexercised.)*
+- [x] OTA update succeeds (a second `esphome run` over the network). *(PASS 2026-08-09 —
+      exercised **twice**, 27.48 s then 11.17 s, both reporting `OTA successful`. The boot
+      banner also reports `Bootloader rollback: supported`, confirming the dual-partition
+      layout: a failed OTA writes the inactive slot and leaves the running firmware
+      intact. No brick risk on this board.)*
 
 ## Receive (sniff)
 
-- [ ] Receiver: a remote press produces a **decoded and/or raw** line in the ESPHome
-      log. *(Not yet observed. The RX **hardware/wiring** is proven via the Arduino
-      diagnostics — 22 edge bursts + 28 clean captures — but the ESPHome
-      `remote_receiver` path (`inverted: false`, `tolerance`, `idle`, `buffer_size`) is
-      a different code path; run `esphome logs` and press a remote to confirm.)*
+- [x] Receiver: a remote press produces a **decoded and/or raw** line in the ESPHome
+      log. *(PASS 2026-08-09, R1 — the first observation of this path ever. It produced
+      **both**: a 120-entry raw array and a clean decode, `Received Symphony: data=0xD81,
+      nbits=12`.
+      **It only works with `inverted: true`.** Run 1 with the previously-documented
+      `inverted: false` returned every timing sign-flipped (0/24 matching the known-good
+      array) and decoded as nothing. Run 2 with `true` matched 24/24 and decoded first
+      press. `README.md` and `docs/troubleshooting.md` both asserted `false` in bold; both
+      are corrected.)*
+- [x] **Round trip: a capture replays and actuates the device (R1).** *(PASS 2026-08-09.
+      `on_raw` → `transmit_raw` on-device, no HA in the loop: the fan toggled ~3 s after
+      the capture with no second press. The board also heard its own replay and decoded it
+      as the same `Symphony data=0xD81, nbits=12` — so the retransmission is faithful, not
+      merely plausible.)*
 
 ## Transmit (blast)
 

@@ -89,8 +89,11 @@ for the GUI route.
   they sound like — see [`docs/wiring.md`](docs/wiring.md). Don't swap them.
 - **⚠️ Power the 5990's VIN (red) from `3V`, not 5V.** VIN is the receiver's output
   logic level; at 5V it drives ~5V into the 3.3V GPIO14 and can damage the ESP32.
-- **`inverted: false` is correct** for the Adafruit 5990's buffered output. Do
-  **not** set it to `true` — that's only for a bare TSOP38238 sensor.
+- **`inverted: true` is correct** for the Adafruit 5990 on this build — **reversed
+  2026-08-09**, see [`docs/troubleshooting.md`](docs/troubleshooting.md). This file
+  previously said the opposite in bold, on a claim never tested against a real capture.
+  With `false`, captures come back with every sign flipped and **look perfectly
+  plausible**; they simply do not replay.
 - The included PSU (Adafruit 4298) is **power-only** and cannot flash the board.
   The first flash needs a separate **USB-C data cable**; updates after that can go OTA
   over WiFi (OTA is configured but not yet exercised — both flashes so far were USB).

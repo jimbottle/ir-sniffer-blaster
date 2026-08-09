@@ -39,7 +39,9 @@ logger:
 remote_receiver:
   pin:
     number: GPIO14
-    inverted: false     # 5990 output is buffered/demodulated; do NOT invert
+    inverted: true      # CORRECTED 2026-08-09 by R1; mirrored from
+                        # ir-blaster-livingroom.yaml. Was `false`, which records the
+                        # 5990's idle-HIGH output as mark and inverts every capture.
   dump: all             # log decoded protocol+code AND raw timings
   tolerance: 25%
   idle: 25ms

@@ -89,8 +89,10 @@ discipline of [`validation.md`](validation.md).
 |---|---|
 | ESPHome exposes a **raw receive trigger** | **VERIFIED** by reading this repo's own vendored ESPHome: `remote_base/__init__.py:1220` has `@register_trigger("raw", RawTrigger, cg.std_vector.template(cg.int32))`. Payload is `std::vector<int32_t>` — the same shape `send_raw_ir` consumes |
 | ESPHome can push **arbitrary-length data to HA's event bus** | **VERIFIED** by source read: `api/__init__.py:646` registers the `homeassistant.event` action. Event name must be `esphome.*` (`validate_homeassistant_event`, line 624). This is the route around the 255-char state cap |
-| That trigger **fires on this hardware** | **UNVERIFIED.** See `README.md` acceptance criteria: the ESPHome `remote_receiver` dump has not been observed at all. RX is proven only via the Arduino diagnostics, a different code path |
-| A capture can round-trip `on_raw` → `send_raw_ir` → device responds | **UNVERIFIED.** This is the single test that validates the whole premise |
+| That trigger **fires on this hardware** | **PROVEN 2026-08-09 (R1).** 120-entry array delivered on the first press. Requires `inverted: true` — see below |
+| A capture can round-trip `on_raw` → `transmit_raw` → device responds | **PROVEN 2026-08-09 (R1). THE PREMISE HOLDS.** On-device, no HA: the fan toggled ~3 s after capture with no second press. The board also heard its own replay and decoded it identically, so the retransmission is faithful |
+| RX polarity | **`inverted: true` — the opposite of what this project documented.** Run 1 (`false`) returned every sign flipped: 0/24 matching the known-good array, no decode, no actuation. Run 2 (`true`): 24/24 matching within 19.2 µs mean, decoded on first press, fan actuated. The old claim was asserted at bring-up and never tested against a capture |
+| The fan remote's protocol | **Symphony `data=0xD81`, `nbits=12` — NOT "unknown".** The "decodes as UNKNOWN so we must use raw" premise was a polarity artefact. See the schema consequence below |
 | The board is **adopted in Home Assistant** | **PROVEN.** Evidence is the ESPHome integration's own **config entry** — `core.config_entries` pins "IR Blaster (Living Room)" to `host: 192.168.0.6` (`home-assistant-pi/CHANGELOG.md:1446`, `:1468`). Entity existence is corroborating only: HA also creates `button.*` entities from template helpers and MQTT discovery, so an earlier "HA *only* creates that entity via ESPHome" was false |
 | **HA → ESP32 over the encrypted API** delivers an action | **PROVEN 2026-08-07 (R15 closed).** The owner pressed `button.ir_blaster_living_room_fan_power` in HA and **watched the fan toggle**, on the standing production firmware with nothing flashed or changed beforehand. That is the physical observation the standing rule below demands — and note it is the *only* citation of the four attempted that qualifies |
 | 🚨 **STANDING RULE: no HA-side artefact proves this hop.** | *Kept after R15 closed, because the rule is what got it closed correctly.* **Three consecutive revisions asserted this hop and were wrong, each on a different artefact; the fourth attempt was a human watching the fan, and that is the one that held.** The hop was working the whole time — this was an evidence gap, never a fault — but "it probably works" is not what this table records. Do not assert this class of claim without device-side or physical evidence. What was tried and does **not** work: (1) `automation.…last_triggered` — proves the automation started; (2) `button.….state` — **ESPHome buttons are stateless.** No `ButtonStateResponse` exists anywhere in the vendored protocol (zero hits across `site-packages`) and `ButtonCommandRequest` is fire-and-forget with no reply (`aioesphomeapi/client.py:1661`), so the state is a **locally-generated `last_pressed`** written by HA's own `ButtonEntity`; (3) `my-bangle/apps/irblast/NOTES.md:43` *"A tap on the watch fired the fan"* — **not an independent observation.** The same sentence says *"Measured from Home Assistant rather than taken on report"*, and that note's own chain table ends at `webhook → automation → button`, with no `button → ESP32 → fan` leg. It is a summary of artefacts (1) and (2) |
@@ -210,6 +212,19 @@ instance.
 
 **These are different shapes and conflating them is the likeliest way the two sides
 diverge.** The private record holds the raw timing arrays; the public one never does.
+
+> **⚠️ R1 changed this section's premise and it is not yet fully reworked.** The fan
+> remote decodes as **Symphony `data=0xD81, nbits=12`**; "everything is an unknown raw
+> code" was an artefact of inverted RX polarity. ESPHome has a matching
+> `transmit_symphony` action (`remote_base/__init__.py:1173`) taking `data`, `nbits` and
+> `command_repeats`.
+>
+> **A decoded record is ~3 small fields against a 120-entry array — roughly 50× smaller.**
+> That lands directly on the watch's response-size limit (R2), which was the tightest
+> constraint on the whole read path. The library should therefore be **protocol-first,
+> raw-fallback**: store the decode when there is one, raw only when there is not. The
+> schema below is still raw-only and needs a `protocol` variant adding once R11 sampling
+> shows how many other remotes decode.
 
 **Private — `/config/ir_codes.json`.** Read by the `command_line` sensor at fire time.
 This is the only place a raw array exists.
@@ -382,13 +397,14 @@ physical access.
 
 Runnable without the watch and without the Bangle agent. **R1 blocks everything.**
 
-- [ ] **R1 — Does `on_raw:` fire, and does its array round-trip?** With the fan remote:
-      `on_raw` fires → lambda captures `x` → **that array**, not the log text and not the
-      committed array, is fed to `send_raw_ir` → the fan toggles. One test, and it
-      collapses four unticked `validation.md` items at once. Two edge risks to watch: the
-      receiver applies its own filtering, so a live capture may differ from the stored
-      array at the **edges** (the committed array ends on a mark, `1230`, with no
-      trailing space); and `buffer_size` bounds capture length. **Blocking everything.**
+- [x] **R1 — PASS, 2026-08-09. The premise holds.** `on_raw` fired, the captured array
+      replayed through `transmit_raw`, and the fan toggled with no second press. Took two
+      runs: run 1 exposed inverted RX polarity (0/24 signs matching the known-good array),
+      run 2 with `inverted: true` matched 24/24 and actuated. Closed four `validation.md`
+      items at once — receiver dump, round trip, OTA (twice), and the transmit path.
+      Three findings came with it: **RX polarity was documented backwards**, the fan
+      remote **decodes as Symphony `0xD81`/12** rather than being unknown, and a capture
+      holds **~2.5 repeats** rather than one frame.
 - [ ] **R12 — Correct `validation.md`: HA *adoption* is proven, but only adoption.**
       Adoption stands on entity **enumeration** — `button.ir_blaster_living_room_fan_power`
       exists, and HA only creates it from a list-entities response over the ESPHome
@@ -482,12 +498,14 @@ they want to be batched into one sitting. Answers feed directly into Phase 2 siz
 
 Still open:
 
-- [ ] **H5 — Physical access, two sittings. Sitting 1 IN PROGRESS.**
-      - **Sitting 1 (hardware, now):** R15 ✅ and R13 ✅ done. **R1 is the remaining
-        item** — flash `ir-roundtrip-test.yaml`, press the fan remote once, watch the fan.
-        The flash doubles as the OTA test. See `docs/hardware-gate-runbook.md`.
-      - **Sitting 2 (watch, later):** watch on the phone, Chrome's device chooser needs
-        a human click. Covers the Bangle agent's R2–R10. Gated on R1 passing.
+- [x] **H5 sitting 1 (hardware) — DONE 2026-08-09.** R15 ✅, R13 ✅, R1 ✅, OTA ✅.
+      **The hardware gate is fully closed and Phase 2 is unblocked.**
+      *Outstanding from that sitting:* restore production firmware
+      (`esphome run ir-blaster-livingroom.yaml`) if not already done, and optional R11
+      sampling of other remotes — now much more valuable, since it decides how many codes
+      can use the compact decoded form rather than raw arrays.
+- [ ] **H5 sitting 2 (watch) — now schedulable.** Watch on the phone, Chrome's device
+      chooser needs a human click. Covers the Bangle agent's R2–R10. No longer gated.
 - [ ] **H7 — Does the watch's `irblast.json` hold the rotated id?** The single button is
       reported working, which implies yes, but the rotation runbook lists re-flashing the
       watch as part of the change. **Not blocking the hardware work**, but confirm before

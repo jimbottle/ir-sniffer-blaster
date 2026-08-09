@@ -12,9 +12,22 @@
 
 ## Wiring / hardware gotchas
 
-- **`inverted: false` is correct** for the 5990's buffered output. Do **NOT** switch
-  it to `inverted: true` — that setting is only for a bare TSOP38238 sensor, which
-  this build does not use. (Symptom of getting it wrong: garbage or no decodes.)
+- **`inverted: true` is correct** for the 5990 on this build. **This reverses what this
+  file said until 2026-08-09**, which was: *"`inverted: false` is correct … do NOT switch
+  it to `inverted: true` — that setting is only for a bare TSOP38238."* That was asserted
+  from bring-up and **never tested** — the ESPHome receiver dump had not once been
+  observed. R1 observed it and refuted it.
+  - **Run 1 (`false`):** capture came back as the known-good fan code with **every sign
+    flipped** — 24/24 leading entries inverted, magnitudes matching to 15.5 µs mean.
+    Replaying it did not actuate the fan.
+  - **Run 2 (`true`):** the captured array replayed through `transmit_raw` **actuated the
+    fan**.
+  - **Why:** the 5990's IRin idles HIGH and pulls LOW during a carrier burst, so `false`
+    records idle as mark and inverts everything.
+  - **The old symptom description was also wrong.** Getting it wrong does *not* give
+    "garbage or no decodes" — it decodes fine and dumps a plausible-looking array. It is
+    silently inverted, which is far harder to spot. Compare a capture against a known-good
+    array rather than trusting that it looks reasonable.
 - **The 5990 is NOT I2C**, despite the 4045 cable being labeled "I2C STEMMA." Do not
   plug it into the Feather's STEMMA QT port. Wire the four leads to GPIOs per
   [`docs/wiring.md`](wiring.md).

@@ -65,7 +65,20 @@ web_server:
 remote_receiver:
   pin:
     number: GPIO14
-    inverted: false     # 5990 output is buffered/demodulated; do NOT invert
+    # ⚠️ CORRECTED 2026-08-09 (R1). This was `false` since bring-up on the strength of a
+    # claim nobody had ever tested — the ESPHome receiver dump had never once been
+    # observed. R1 observed it, and `false` is wrong for this hardware.
+    #
+    # R1 run 1 (inverted: false): the capture came back as the known-good fan code with
+    # EVERY SIGN FLIPPED — 24/24 leading entries inverted, magnitudes matching to 15.5us
+    # mean. Not an alignment artefact; those offset magnitudes by a position and these
+    # did not. Replaying it did not actuate the fan.
+    # R1 run 2 (inverted: true): capture replayed through transmit_raw ACTUATED THE FAN.
+    #
+    # The 5990's IRin idles HIGH and pulls LOW during a carrier burst, so `false` records
+    # idle as mark. README.md and docs/troubleshooting.md both asserted the opposite in
+    # bold; both are corrected as of this change.
+    inverted: true
   dump: all             # logs decoded protocol+code AND raw timings
   tolerance: 25%
   idle: 25ms
