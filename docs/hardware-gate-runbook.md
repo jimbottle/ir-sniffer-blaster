@@ -160,6 +160,21 @@ entirely on-device — but the flash and the log stream do go over the network, 
 unexplained OTA failure or a log stream that dies mid-test is more likely this than a
 fault in the test.
 
+**Measured 2026-08-09, immediately before the R1 sitting.** The board answers — mDNS
+resolves to `192.168.0.6`, OTA port 3232 is open, the web server returns 200 in 76 ms —
+but the link is genuinely poor: **6.7 % packet loss over 15 pings, latency 32–242 ms,
+stddev 50 ms.** One first-connection attempt to port 80 timed out and succeeded on retry.
+
+Two things follow, and the second one matters for how you record the result:
+
+- **A failed OTA is safe.** The partition table is dual-slot (`app0`/`app1` + `otadata`),
+  so a flash writes to the *inactive* partition and only switches on success. A failure
+  mid-write leaves the current firmware running. There is no brick risk here.
+- **A failed OTA is AMBIGUOUS on this link.** It would not cleanly mean "OTA does not
+  work on this board" — it could equally be the WiFi dropping mid-transfer. If OTA fails,
+  say so *and* note that the link was measured lossy, rather than recording OTA as broken.
+  Retrying once before falling back to USB is worth it.
+
 ## What each outcome unblocks
 
 | outcome | next |
