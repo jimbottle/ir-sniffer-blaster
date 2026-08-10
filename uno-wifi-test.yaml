@@ -21,9 +21,9 @@
 #   white (IRin,  RX)  -> GPIO5  (see pin-choice note below)
 #   green (IRout, TX)  -> GPIO4
 #
-#   ⚠️ Many of these boards silkscreen GPIO4 and GPIO5 SWAPPED. If the loopback
-#   below never fires, swap the white and green wires before debugging anything
-#   else.
+#   ⚠️ Many of these boards silkscreen GPIO4 and GPIO5 SWAPPED. If the RX test
+#   below stays silent when you press the remote, swap the white and green
+#   wires before debugging anything else.
 #
 # ── Why GPIO4/GPIO5 ──────────────────────────────────────────────────────────
 # They are the ESP8266's only two pins with no boot-strap role and full
@@ -32,18 +32,31 @@
 # arriving during power-up could hold a strap pin wrong and brick the boot),
 # and GPIO16 has no interrupts, which the receiver needs.
 #
-# ── The self-test ─────────────────────────────────────────────────────────────
-# Every 15 s the device transmits Symphony data=0x5A5 nbits=12 and, because the
-# 5990's emitter and receiver share a board, hears itself. PASS = the log shows
-# "Received Symphony: data=0x5A5, nbits=12" shortly after each "self-test TX"
-# line. This mirrors the loopback behavior proven on the Feather 2026-08-09
-# (ir-blaster-livingroom.yaml:119-122) and exercises capture AND replay with no
-# remote, no fan, and no human in the loop.
+# ── The test: two legs, verified independently ───────────────────────────────
+# ⚠️ On-device self-hearing loopback is ARCHITECTURALLY IMPOSSIBLE on ESP8266,
+# so a silent log after a TX line is EXPECTED and proves nothing about wiring.
+# On chips without the RMT peripheral, ESPHome's transmitter bit-bangs each
+# frame holding an InterruptLock — interrupts globally disabled for the frame's
+# whole lifetime (remote_transmitter.cpp:86-103 in esphome==2026.6.2) — while
+# the ESP8266 receiver captures edges in a GPIO ISR (remote_receiver.cpp:74).
+# Every edge of our own transmission arrives while that ISR is masked. The
+# Feather's proven self-hearing (ir-blaster-livingroom.yaml:119-122) does NOT
+# transfer: ESP32 RMT hardware captures independently of CPU interrupt state.
 #
-# 0x5A5 is deliberately NOT the living-room fan's code (0xD81): even if this
-# board is fired within range of the real fan, it actuates nothing.
+# RX leg (this board alone): point the real fan remote at the 5990 and press.
+#   PASS = "Received Symphony: data=0xD81, nbits=12" in the log. Receiving
+#   actuates nothing, so using the real remote is safe.
 #
-# ── What a PASS does and does not prove ──────────────────────────────────────
+# TX leg (needs an independent witness): this config transmits Symphony
+#   data=0x5A5 nbits=12 every 15 s as a beacon. Point the 5990 at a SECOND
+#   receiver — the Feather running ir-wiring-test.yaml, or the production
+#   living-room device (its dump: all logs over the API).
+#   PASS = the witness logs Symphony 0x5A5 every 15 s.
+#
+# 0x5A5 is deliberately NOT the living-room fan's code (0xD81): even fired
+# within range of the real fan, the beacon actuates nothing.
+#
+# ── What a two-leg PASS does and does not prove ──────────────────────────────
 # Proves: toolchain flashes this board; both 5990 directions work on ESP8266
 # bit-banged IR. Does NOT prove equivalence with the Feather's RMT-hardware
 # timing under WiFi load — that needs an R1-style gate with wifi enabled before
@@ -87,15 +100,17 @@ remote_transmitter:
   pin: GPIO4
   carrier_duty_percent: 50%
 
-# Loopback self-test: fire a benign Symphony code and let dump: all report
-# whether the receiver heard it back. command_repeats left at its default (2)
-# to match what the real remote does.
+# TX beacon for the witness receiver (see "The test" above). This device
+# CANNOT hear its own transmission — transmit runs under an InterruptLock that
+# masks the receiver's ISR — so no RX dump follows this line in OUR log; the
+# beacon only exists to be caught by a second receiver. command_repeats left at
+# its default (2) to match what the real remote does.
 interval:
   - interval: 15s
     then:
       - logger.log:
           level: INFO
-          format: "self-test TX: Symphony data=0x5A5 nbits=12 (expect matching RX dump within ~1s)"
+          format: "TX beacon: Symphony data=0x5A5 nbits=12 (verify on a SECOND receiver; this device cannot hear itself)"
       - remote_transmitter.transmit_symphony:
           data: 0x5A5
           nbits: 12
