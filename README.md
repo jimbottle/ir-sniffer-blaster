@@ -84,6 +84,7 @@ for the GUI route.
 | `docs/validation.md`            | Acceptance checklist                                              |
 | `docs/extensions.md`            | Ideas once the basics work                                       |
 | `docs/bangle-integration.md`    | Plan for browsing and firing captured codes from a Bangle.js watch |
+| `docs/naming.md`                | **Why the identifiers say "living room" while the device is in the bedroom — do not rename** |
 | `captured-codes/`               | Record captured IR codes here                                    |
 | `arduino-tests/`                | Arduino IDE diagnostic sketches to verify the IR receiver wiring |
 | `ir-wiring-test.yaml`           | ESPHome no-network receiver test (alternative to `arduino-tests/`)|
