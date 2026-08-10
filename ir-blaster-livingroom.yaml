@@ -1,5 +1,16 @@
 esphome:
   name: ir-blaster-livingroom
+  # DO NOT RENAME. The device physically moved to the BEDROOM on 2026-08-10 and
+  # Home Assistant was updated there (area `bedroom`, name_by_user "IR Blaster
+  # (Bedroom)"), which overrides this string everywhere in the UI. This name, the
+  # `name:` above, this file's name and the generated entity ids were ALL kept
+  # deliberately. Renaming any of them breaks things that are not in this repo:
+  #   - `button.ir_blaster_living_room_fan_power` is fired by an automation in
+  #     jimbottle/home-assistant-pi (automations/bangle_irblast.yaml), which is
+  #     what the Bangle.js watch button triggers
+  #   - changing `name:` forces re-adoption in HA and changes the generated
+  #     service id `esphome.ir_blaster_livingroom_send_raw_ir`
+  # The location lives in HA's registry, not in firmware. See docs/naming.md.
   friendly_name: IR Blaster (Living Room)
   platformio_options:
     # This board's USB-serial bridge is a CH34x (VID 0x1A86), which is unreliable at

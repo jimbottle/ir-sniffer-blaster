@@ -21,6 +21,15 @@ Arduino diagnostics, but the ESPHome `remote_receiver` dump hasn't been watched 
 integration (adoption in progress), and the `send_raw_ir` service. Compiling / flashing
 / testing the board is expected — it's a live build, not prep mode.
 
+## The device is in the BEDROOM; the identifiers say living room
+
+Moved 2026-08-10. Home Assistant was updated (area `bedroom`, display name "IR Blaster
+(Bedroom)"). The ESPHome `name`, this repo's filename, the entity ids and the mDNS
+hostname were **all deliberately kept as `livingroom`** — they have consumers outside
+this repo, including the automation that the Bangle.js watch button fires.
+
+**Do not rename them.** Full rationale and the consequence table: [`docs/naming.md`](docs/naming.md).
+
 ## Source of truth
 
 - **`ir-blaster-livingroom.yaml`** is the authoritative firmware spec — the single
