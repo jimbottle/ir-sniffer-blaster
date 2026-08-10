@@ -12,8 +12,9 @@ them over the Home Assistant API, MQTT, REST, or a built-in web server.
 ## Current state
 
 **Built and working on real hardware.** Flashed to the ESP32-PICO-V3-02 Feather, on
-2.4GHz WiFi via DHCP (address reserved on the router), reachable at
-`http://ir-blaster-livingroom.local/`. The **emitter** is validated end to end: the
+2.4GHz WiFi via DHCP (holding `192.168.0.6` by lease reuse — **no router reservation
+yet**, the ask is tracked in `home-assistant-pi-6sf`; see the "Known consequence"
+section of `docs/naming.md`), reachable at `http://ir-blaster-livingroom.local/`. The **emitter** is validated end to end: the
 `Fan Power` button, pressed over the network (REST/web server), fires a captured raw
 code that toggles the fan. **Receiver:** the RX hardware/wiring is proven via the
 Arduino diagnostics, but the ESPHome `remote_receiver` dump hasn't been watched yet
@@ -47,8 +48,9 @@ this repo, including the automation that the Bangle.js watch button fires.
 - **Intentional deviations from the original brief** (code-review driven, all
   reversible): the API block uses current `actions:`/`action:` syntax instead of
   the deprecated `services:`/`service:`; a fallback `ap:` + `captive_portal:` was
-  added for WiFi recovery; WiFi uses **DHCP** (address reserved on the router) with
-  the `manual_ip:` static block kept commented out as an alternative.
+  added for WiFi recovery; WiFi uses **DHCP** (address held by lease reuse; a router
+  reservation is still pending, `home-assistant-pi-6sf`) with the `manual_ip:` static
+  block kept commented out as an alternative.
 - **Real captured buttons, not placeholders.** The commented placeholder buttons
   were replaced by a live **`Fan Power`** `transmit_raw` button using a real captured
   code (`captured-codes/`), verified toggling the fan on hardware. Add more the same

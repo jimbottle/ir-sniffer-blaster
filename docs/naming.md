@@ -29,9 +29,11 @@ Each of these has a consumer outside this repo:
   `entity_id` records the same decision from the other side
 - **Changing `name:` forces re-adoption in Home Assistant** and changes the generated
   service id, which `docs/bangle-integration.md` builds on
-- **`name:` also determines the mDNS hostname.** mDNS is already broken on this LAN
-  (`home-assistant-pi-6sf`), so the ESPHome integration pins a bare IP —
-  `host: 192.168.0.6`. A rename would not fix that and would add churn to it
+- **`name:` also determines the mDNS hostname.** mDNS resolution is broken *from the
+  HA Pi specifically* (`home-assistant-pi-6sf`; elsewhere on the LAN it works —
+  measured resolving to `192.168.0.6` on 2026-08-09, `docs/hardware-gate-runbook.md`),
+  so the ESPHome integration pins a bare IP — `host: 192.168.0.6`. A rename would not
+  fix that and would add churn to it
 
 **Location belongs in Home Assistant's registry, not in firmware.** That is where it was
 changed, and that is the right place for it.

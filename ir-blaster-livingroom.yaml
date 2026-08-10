@@ -31,9 +31,10 @@ logger:
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
-  # Using DHCP; the address is reserved on the router. Reachable via mDNS at
-  # ir-blaster-livingroom.local. To pin a static IP in firmware instead, uncomment
-  # and set to your LAN:
+  # Using DHCP; the device holds 192.168.0.6 by lease reuse — there is NO router
+  # reservation yet (pending, home-assistant-pi-6sf; see docs/naming.md "Known
+  # consequence"). Reachable via mDNS at ir-blaster-livingroom.local. To pin a
+  # static IP in firmware instead, uncomment and set to your LAN:
   # manual_ip:
   #   static_ip: 192.168.0.150
   #   gateway: 192.168.0.1
