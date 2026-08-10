@@ -1,0 +1,101 @@
+# SPIKE (branch esp8266-uno-wifi-spike): can the UNO+WiFi R3's ESP8266 half do
+# this project's job? Tracks ir-sniffer-blaster-exg.
+#
+# The board is a UNO+WiFi R3 ATmega328P+ESP8266 CH340: two independent MCUs
+# sharing a PCB, joined only by serial through the DIP-switch bank. This config
+# targets the ESP8266 ONLY; the ATmega is dead weight and its switches (1-4)
+# stay OFF so it cannot sit on the serial lines.
+#
+# Like ir-wiring-test.yaml, this is deliberately network-free: no wifi / api /
+# ota / web_server, so it needs no secrets.yaml and cannot touch the production
+# living-room device. Everything reports over the USB serial console.
+#
+# ── DIP switches ──────────────────────────────────────────────────────────────
+#   Flash:  5,6,7 ON, rest OFF   (CH340 -> ESP8266, switch 7 holds GPIO0 low)
+#   Logs:   5,6   ON, rest OFF   (CH340 -> ESP8266 serial console)
+#
+# ── Wiring (5990 transceiver) ─────────────────────────────────────────────────
+#   red   (VIN)        -> 3.3V   (MANDATORY here, not just prudent: ESP8266 has
+#                                 no 5V-tolerant pins at all)
+#   black (GND)        -> GND
+#   white (IRin,  RX)  -> GPIO5  (see pin-choice note below)
+#   green (IRout, TX)  -> GPIO4
+#
+#   ⚠️ Many of these boards silkscreen GPIO4 and GPIO5 SWAPPED. If the loopback
+#   below never fires, swap the white and green wires before debugging anything
+#   else.
+#
+# ── Why GPIO4/GPIO5 ──────────────────────────────────────────────────────────
+# They are the ESP8266's only two pins with no boot-strap role and full
+# interrupt support. Every alternative fails somehow: GPIO0/GPIO2 must be HIGH
+# at reset and GPIO15 LOW (the 5990's receiver output is active-low, so IR
+# arriving during power-up could hold a strap pin wrong and brick the boot),
+# and GPIO16 has no interrupts, which the receiver needs.
+#
+# ── The self-test ─────────────────────────────────────────────────────────────
+# Every 15 s the device transmits Symphony data=0x5A5 nbits=12 and, because the
+# 5990's emitter and receiver share a board, hears itself. PASS = the log shows
+# "Received Symphony: data=0x5A5, nbits=12" shortly after each "self-test TX"
+# line. This mirrors the loopback behavior proven on the Feather 2026-08-09
+# (ir-blaster-livingroom.yaml:119-122) and exercises capture AND replay with no
+# remote, no fan, and no human in the loop.
+#
+# 0x5A5 is deliberately NOT the living-room fan's code (0xD81): even if this
+# board is fired within range of the real fan, it actuates nothing.
+#
+# ── What a PASS does and does not prove ──────────────────────────────────────
+# Proves: toolchain flashes this board; both 5990 directions work on ESP8266
+# bit-banged IR. Does NOT prove equivalence with the Feather's RMT-hardware
+# timing under WiFi load — that needs an R1-style gate with wifi enabled before
+# this board is trusted for the real role.
+
+esphome:
+  name: uno-wifi-test
+  platformio_options:
+    # Same CH34x bridge family as the Feather; hold the proven 115200 rather
+    # than rediscover the "chip stopped responding" failure. See docs/hardware.md.
+    upload_speed: 115200
+
+esp8266:
+  board: esp12e         # ESP-8266EX + 4MB flash, matches the on-board module
+  framework:
+    version: recommended
+
+logger:
+  level: DEBUG          # raw/decoded IR dumps appear here
+
+# IR RECEIVE — 5990 white wire (IRin, receiver output) -> GPIO5.
+# Settings mirrored from ir-blaster-livingroom.yaml where they are portable.
+# receive_symbols is NOT here on purpose: it is an ESP32 RMT-peripheral option
+# and does not exist on ESP8266. buffer_size is the only sizing knob on this
+# platform (raw-edge ring buffer; ESP8266 default is 1kb — kept modest because
+# this chip has ~50KB of usable heap, and a Symphony frame is tiny).
+remote_receiver:
+  pin:
+    number: GPIO5
+    inverted: true      # 5990 output idles HIGH, active LOW — same polarity R1
+                        # corrected on the Feather (mirrored, not re-derived)
+  dump: all             # log decoded protocol+code AND raw timings
+  tolerance: 25%
+  idle: 25ms
+  buffer_size: 2kb
+
+# IR TRANSMIT — 5990 green wire (IRout, emitter drive) -> GPIO4.
+# On ESP8266 the 38kHz carrier is bit-banged (no RMT peripheral) — that timing
+# fidelity question is exactly what the loopback observes.
+remote_transmitter:
+  pin: GPIO4
+  carrier_duty_percent: 50%
+
+# Loopback self-test: fire a benign Symphony code and let dump: all report
+# whether the receiver heard it back. command_repeats left at its default (2)
+# to match what the real remote does.
+interval:
+  - interval: 15s
+    then:
+      - logger.log:
+          level: INFO
+          format: "self-test TX: Symphony data=0x5A5 nbits=12 (expect matching RX dump within ~1s)"
+      - remote_transmitter.transmit_symphony:
+          data: 0x5A5
+          nbits: 12
