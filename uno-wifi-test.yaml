@@ -95,7 +95,7 @@ remote_receiver:
 
 # IR TRANSMIT — 5990 green wire (IRout, emitter drive) -> GPIO4.
 # On ESP8266 the 38kHz carrier is bit-banged (no RMT peripheral) — that timing
-# fidelity question is exactly what the loopback observes.
+# fidelity question is exactly what the TX-leg witness observes.
 remote_transmitter:
   pin: GPIO4
   carrier_duty_percent: 50%
