@@ -7,7 +7,8 @@ unticked items genuinely haven't been exercised yet.
 
 - [x] `esphome run` compiles with no errors.
 - [x] Device joins WiFi (2.4GHz); web server reachable at
-      `http://ir-blaster-livingroom.local/` (DHCP + router reservation).
+      `http://ir-blaster-livingroom.local/` (DHCP; address held by lease reuse,
+      router reservation pending — `home-assistant-pi-6sf`).
 - [x] Adopted in Home Assistant. *(Corrected 2026-08-07 — this was stale, not pending.
       Evidence is the **ESPHome integration config entry**: `core.config_entries` pins
       "IR Blaster (Living Room)" to `host: 192.168.0.6`, recorded at
