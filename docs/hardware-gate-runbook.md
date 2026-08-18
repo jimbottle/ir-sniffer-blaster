@@ -42,8 +42,10 @@ esphome run ir-roundtrip-test.yaml
 **`run` flashes and then streams the log by itself.** Leave it running — you do not need
 a second command.
 
-**It will try OTA first.** This is also the OTA test, which has never been run on this
-board.
+**It will try OTA first.** This was also the OTA test. *(Written before the
+2026-08-09 sitting, when OTA had never been run. **It passed** — see the outcome
+below and the banner at the top of this file. OTA has since run three times with no
+failures; this step is no longer a test.)*
 
 - Flashes over the air → **OTA works.** Tell me; it comes off the open list.
 - Falls back to asking for a serial port → **OTA failed.** Plug in a USB-C **data** cable

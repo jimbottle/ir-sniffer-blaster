@@ -48,9 +48,13 @@ esphome run ir-blaster-livingroom.yaml
 
 OTA is gated by `ota_password` from `secrets.yaml`.
 
-> **Not yet exercised on this board.** Both flashes so far were over USB; the OTA path
-> (`ota:` block) is configured but hasn't been run. **Keep the USB data cable handy
-> until one network `esphome run` succeeds** — if OTA fails, USB is your fallback.
+> **OTA is proven on this board.** Exercised twice on 2026-08-09 (27.48 s, then
+> 11.17 s, both reporting `OTA successful`) and again on 2026-08-18 to deliver the
+> `ir-sniffer-blaster-54y` probe firmware — three network flashes, no failures.
+> `docs/validation.md` carries the record. **A failed OTA is safe:** the boot banner
+> reports `Bootloader rollback: supported`, so a bad image is written to the inactive
+> slot and the running firmware survives. Keep a USB-C **data** cable available as a
+> fallback anyway — the bundled 4298 PSU is power-only and cannot flash.
 
 ## Docker alternative
 
