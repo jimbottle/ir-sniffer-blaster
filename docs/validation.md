@@ -23,6 +23,12 @@ unticked items genuinely haven't been exercised yet.
       from HA toggled the fan, and it has been in that state for some time. The owner also
       confirmed nothing had been changed or flashed beforehand, so this is the standing
       production firmware.
+      **⚠️ 2026-08-18: the fan actuation cited here NO LONGER REPRODUCES** (regressed
+      2026-08-17 ~23:48, `ir-sniffer-blaster-54y`). **This hop itself still holds** and is now
+      on stronger evidence than R15 had: a `button.press` confirmed device-side, the board
+      logging its own 38 kHz transmission decoding as `Symphony 0xD81` on 42/42 presses.
+      What broke is downstream, past the emitter. Matches `docs/bangle-integration.md`'s
+      R15 row.
       **This was an evidence gap, not a fault.** Adoption proves HA enumerated the device;
       it does not prove a command arrives, and **no HA-side artefact can settle it** —
       ESPHome buttons are stateless, so `button.*` state is HA's own locally-generated
@@ -75,5 +81,6 @@ unticked items genuinely haven't been exercised yet.
       the ESPHome log. *(PASS 2026-08-09 — both forms; requires `inverted: true`. See
       Receive above.)*
 - [x] Transmitter: a captured code can be replayed and the target device responds.
+      *(**⚠️ REGRESSED 2026-08-17 ~23:48 local — the fan has not responded to the blaster since; under diagnosis as `ir-sniffer-blaster-54y`.** True for its date; NOT current status.)*
 - [x] A generic service exists to transmit arbitrary raw IR timing arrays programmatically.
       (`send_raw_ir` is defined and the config validates; not yet fired end-to-end — see above.)

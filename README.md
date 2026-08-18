@@ -5,11 +5,21 @@ A programmable, networked **infrared blaster for a single room**. It captures
 demand. Built on an **ESP32 Feather V2 running ESPHome**, controllable over the
 Home Assistant API, MQTT, REST, or a built-in web server.
 
+> **⚠️ CURRENT STATUS 2026-08-18: THE FAN HAS NOT RESPONDED TO THE BLASTER SINCE
+> 2026-08-17 ~23:48 local.** Under diagnosis as `ir-sniffer-blaster-54y`. **The status
+> block below remains true for its 2026-08-09 date but is NOT current status.** Measured
+> since:
+> the emitted signal is bit-identical to the real remote and a modulated carrier does
+> leave the emitter (42/42 presses decoded device-side), so *total* carrier loss is
+> excluded — but a **degraded** carrier is not, and a failing emitter drive path is the
+> live hypothesis. See `ir-blaster-livingroom.yaml`'s probe block.
+>
 > **Status: the full sniff → replay loop is proven on hardware (2026-08-09).** Flashed on
 > real hardware (ESP32-PICO-V3-02), on 2.4GHz WiFi via DHCP, reachable at
 > `http://ir-blaster-livingroom.local/`. The **emitter** was already proven; as of the R1
 > round-trip test the **receiver** is too — a live capture replayed through
-> `transmit_raw` and actuated the fan with no second press. HA adoption, HA→device
+> `transmit_raw` and actuated the fan with no second press **(not reproducible since
+> 2026-08-17 — see the banner above)**. HA adoption, HA→device
 > delivery and OTA are all now exercised. Pinned to ESPHome 2026.6.2 (`requirements.txt`).
 >
 > **Two long-standing claims in this README were wrong and are corrected below:** RX
@@ -36,8 +46,10 @@ Home Assistant API, MQTT, REST, or a built-in web server.
       `Received Symphony: data=0xD81, nbits=12`. **Requires `inverted: true`**; with
       `false` every timing comes back sign-flipped and nothing decodes.)*
 - [x] Transmitter: a captured code can be replayed and the target device responds.
+      *(**⚠️ REGRESSED 2026-08-17 ~23:48 local — the fan has not responded to the blaster since; under diagnosis as `ir-sniffer-blaster-54y`.** True for its date; NOT current status.)*
 - [x] **Round trip: a live capture replays and actuates the device.** *(PASS 2026-08-09,
       on-device with no HA in the loop.)*
+      *(**⚠️ REGRESSED 2026-08-17 ~23:48 local — the fan has not responded to the blaster since; under diagnosis as `ir-sniffer-blaster-54y`.** True for its date; NOT current status.)*
 - [x] A generic service exists to transmit arbitrary raw IR timing arrays programmatically.
 - [ ] **`send_raw_ir` fires end to end.** *(Still open — R1 proved `transmit_raw` invoked
       from a lambda in the YAML, which is a different path from the HA-callable

@@ -74,6 +74,10 @@ for your installed version.
 3. Web server up at `http://ir-blaster-livingroom.local/`?
 4. Receiver: any decoded/raw line on a remote press in `esphome logs`?
 5. Transmitter: does a known button actuate the real device?
+   **⚠️ If this is your symptom:** the blaster has been transmitting a correct,
+   carrier-modulated `0xD81` that the fan ignores since 2026-08-17 ~23:48. Do not
+   re-diagnose from scratch — `ir-sniffer-blaster-54y` records what is already
+   eliminated (code content, amplitude, aim, delivery, repeat count, reboot).
 
 Walk these in order — each depends on the previous. Full checklist in
 [`docs/validation.md`](validation.md).

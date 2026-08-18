@@ -11,12 +11,20 @@ them over the Home Assistant API, MQTT, REST, or a built-in web server.
 
 ## Current state
 
+> **⚠️ REGRESSION, 2026-08-18 — READ FIRST.** The fan has not responded to the blaster
+> since **2026-08-17 ~23:48 local**, and the emitter claims in this section are the ones
+> in question. Under diagnosis as `ir-sniffer-blaster-54y`. Delivery is confirmed intact
+> (42/42 presses transmitted and decoded device-side as Symphony `0xD81`); what is not
+> excluded is a **degraded emitter drive path**. Do not prime on "emitter validated end
+> to end" as current status.
+
 **Built and working on real hardware.** Flashed to the ESP32-PICO-V3-02 Feather, on
 2.4GHz WiFi via DHCP (holding `192.168.0.6` by lease reuse — **no router reservation
 yet**, the ask is tracked in `home-assistant-pi-6sf`; see the "Known consequence"
 section of `docs/naming.md`), reachable at `http://ir-blaster-livingroom.local/`. The **emitter** is validated end to end: the
 `Fan Power` button, pressed over the network (REST/web server), fires a captured raw
-code that toggles the fan. **Receiver:** the RX hardware/wiring is proven via the
+code that toggles the fan — **but see the regression banner above: this has not held
+since 2026-08-17 (`ir-sniffer-blaster-54y`).** **Receiver:** the RX hardware/wiring is proven via the
 Arduino diagnostics, but the ESPHome `remote_receiver` dump hasn't been watched yet
 (different code path). Not yet exercised: OTA (both flashes were USB), the HA
 integration (adoption in progress), and the `send_raw_ir` service. Compiling / flashing
@@ -75,7 +83,9 @@ this repo, including the automation that the Bangle.js watch button fires.
   `secrets.yaml.example`; generate the API key with `openssl rand -base64 32`.
 
 Bring-up ran against [`docs/validation.md`](docs/validation.md): the **transmit path is
-proven** (captured code → `Fan Power` button → fan toggles, over the network), while the
+proven** (captured code → `Fan Power` button → fan toggles, over the network) **as of
+bring-up — but see the regression banner under "Current state": the fan has not responded
+since 2026-08-17 (`ir-sniffer-blaster-54y`)**, while the
 **ESPHome receiver dump, HA adoption, OTA, and `send_raw_ir` remain unconfirmed**.
 Captured codes live in [`captured-codes/`](captured-codes/) — add new ones there as you
 capture them.
