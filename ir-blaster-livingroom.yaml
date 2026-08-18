@@ -154,3 +154,53 @@ button:
       - remote_transmitter.transmit_raw:
           carrier_frequency: 38kHz
           code: [1280, -420, 1230, -420, 430, -1270, 1230, -420, 1230, -420, 380, -1270, 380, -1270, 430, -1220, 430, -1270, 380, -1270, 380, -1270, 1230, -7120, 1230, -420, 1230, -420, 430, -1270, 1230, -420, 1230, -420, 380, -1270, 380, -1270, 430, -1220, 430, -1270, 380, -1270, 380, -1270, 1230]
+
+  # ── DIAGNOSTIC PROBES, added 2026-08-18 (ir-sniffer-blaster-54y) ─────────────
+  # Retained deliberately while ir-sniffer-blaster-54y is open, at the owner's
+  # request. They are additive: the production `Fan Power` button below is
+  # untouched. Remove them with 54y.
+  #
+  # Purpose: determine whether this board's OWN RECEIVER can detect the carrier
+  # at all, or whether it decodes by proximity overload / supply coupling. The
+  # emitter and the 5990's receiver sit inches apart on one board sharing VIN,
+  # so a decode at that range is NOT evidence that a real 38 kHz carrier is
+  # leaving the LED. Every "the blaster's signal matches the remote" result on
+  # 2026-08-18 rests on that receiver, so if it is carrier-blind those results
+  # say nothing about the carrier.
+  #
+  # Same 0xD81 raw array as the production button, transmitted at three carriers.
+  # If all three decode identically as Symphony 0xD81, the receiver is NOT
+  # demodulating and the evidence is blind to carrier loss -- which is
+  # consistent with a degraded emitter drive path (LED held on through each
+  # mark instead of pulsed: brighter to a camera, invisible to the fan).
+  # If only the 38 kHz one decodes, the receiver genuinely demodulates, the
+  # production button's carrier is real, and carrier loss is ruled out.
+  #
+  # *** RESULT, MEASURED 2026-08-18. CARRIER LOSS IS RULED OUT. ***
+  # Fired 3x per carrier, HTTP 200 on 9/9:
+  #   38 kHz  -> 3/3 received, 3/3 decoded Symphony 0xD81
+  #   0 Hz    -> 0/3. NO RECEIVER EVENT AT ALL in its window -- not a failed
+  #              decode, nothing. So this receiver truly demodulates; it does
+  #              NOT trigger on proximity overload or supply coupling.
+  #   20 kHz  -> 3/3 received, 2/3 decoded
+  # Consequence: the production button's clean decodes ARE evidence that a
+  # properly modulated carrier leaves the emitter. The fan fault is NOT carrier
+  # loss.
+  # KNOWN LIMIT: 20 kHz still got through, so this receiver has a wide passband
+  # and cannot pin exact carrier frequency or modulation depth. A weak 38 kHz
+  # component riding on a large DC pedestal would still decode at 2 in, still
+  # look bright on a camera, and still starve the fan at distance. Measuring
+  # that needs a scope or a photodiode, not this board.
+  - platform: template
+    name: "PROBE carrier 0Hz (no modulation)"
+    on_press:
+      - remote_transmitter.transmit_raw:
+          carrier_frequency: 0
+          code: [1280, -420, 1230, -420, 430, -1270, 1230, -420, 1230, -420, 380, -1270, 380, -1270, 430, -1220, 430, -1270, 380, -1270, 380, -1270, 1230, -7120, 1230, -420, 1230, -420, 430, -1270, 1230, -420, 1230, -420, 380, -1270, 380, -1270, 430, -1220, 430, -1270, 380, -1270, 380, -1270, 1230]
+
+  - platform: template
+    name: "PROBE carrier 20kHz (far out of band)"
+    on_press:
+      - remote_transmitter.transmit_raw:
+          carrier_frequency: 20000
+          code: [1280, -420, 1230, -420, 430, -1270, 1230, -420, 1230, -420, 380, -1270, 380, -1270, 430, -1220, 430, -1270, 380, -1270, 380, -1270, 1230, -7120, 1230, -420, 1230, -420, 430, -1270, 1230, -420, 1230, -420, 380, -1270, 380, -1270, 430, -1220, 430, -1270, 380, -1270, 380, -1270, 1230]
