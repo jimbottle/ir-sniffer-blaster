@@ -153,11 +153,11 @@ button:
     on_press:
       - remote_transmitter.transmit_raw:
           carrier_frequency: 38kHz
-          code: [1280, -420, 1230, -420, 430, -1270, 1230, -420, 1230, -420, 380, -1270, 380, -1270, 430, -1220, 430, -1270, 380, -1270, 380, -1270, 1230, -7120, 1230, -420, 1230, -420, 430, -1270, 1230, -420, 1230, -420, 380, -1270, 380, -1270, 430, -1220, 430, -1270, 380, -1270, 380, -1270, 1230]
+          code: &fan_raw [1280, -420, 1230, -420, 430, -1270, 1230, -420, 1230, -420, 380, -1270, 380, -1270, 430, -1220, 430, -1270, 380, -1270, 380, -1270, 1230, -7120, 1230, -420, 1230, -420, 430, -1270, 1230, -420, 1230, -420, 380, -1270, 380, -1270, 430, -1220, 430, -1270, 380, -1270, 380, -1270, 1230]
 
   # ── DIAGNOSTIC PROBES, added 2026-08-18 (ir-sniffer-blaster-54y) ─────────────
   # Retained deliberately while ir-sniffer-blaster-54y is open, at the owner's
-  # request. They are additive: the production `Fan Power` button below is
+  # request. They are additive: the production `Fan Power` button ABOVE is
   # untouched. Remove them with 54y.
   #
   # Purpose: determine whether this board's OWN RECEIVER can detect the carrier
@@ -168,39 +168,45 @@ button:
   # 2026-08-18 rests on that receiver, so if it is carrier-blind those results
   # say nothing about the carrier.
   #
-  # Same 0xD81 raw array as the production button, transmitted at three carriers.
-  # If all three decode identically as Symphony 0xD81, the receiver is NOT
-  # demodulating and the evidence is blind to carrier loss -- which is
+  # Both probes reuse the production button's array through the `&fan_raw`
+  # YAML anchor, so they CANNOT drift from the signal they calibrate against.
+  # Do not replace the alias with a literal copy -- the re-capture guidance
+  # above actively invites that drift, and it would silently invalidate the
+  # recorded result below while the comment still claimed sameness.
+  # If all three carriers decode identically as Symphony 0xD81, the receiver is
+  # NOT demodulating and the evidence is blind to carrier loss -- which is
   # consistent with a degraded emitter drive path (LED held on through each
   # mark instead of pulsed: brighter to a camera, invisible to the fan).
-  # If only the 38 kHz one decodes, the receiver genuinely demodulates, the
-  # production button's carrier is real, and carrier loss is ruled out.
   #
-  # *** RESULT, MEASURED 2026-08-18. CARRIER LOSS IS RULED OUT. ***
+  # *** RESULT, MEASURED 2026-08-18.
+  # ***   TOTAL CARRIER LOSS IS RULED OUT. PARTIAL / WEAK CARRIER IS NOT. ***
   # Fired 3x per carrier, HTTP 200 on 9/9:
   #   38 kHz  -> 3/3 received, 3/3 decoded Symphony 0xD81
   #   0 Hz    -> 0/3. NO RECEIVER EVENT AT ALL in its window -- not a failed
   #              decode, nothing. So this receiver truly demodulates; it does
   #              NOT trigger on proximity overload or supply coupling.
   #   20 kHz  -> 3/3 received, 2/3 decoded
-  # Consequence: the production button's clean decodes ARE evidence that a
-  # properly modulated carrier leaves the emitter. The fan fault is NOT carrier
-  # loss.
-  # KNOWN LIMIT: 20 kHz still got through, so this receiver has a wide passband
-  # and cannot pin exact carrier frequency or modulation depth. A weak 38 kHz
-  # component riding on a large DC pedestal would still decode at 2 in, still
-  # look bright on a camera, and still starve the fan at distance. Measuring
-  # that needs a scope or a photodiode, not this board.
+  # Consequence, stated no wider than the measurement reaches: a FULLY
+  # unmodulated emitter -- the LED held DC-on through each mark -- is excluded.
+  # That is ALL that is excluded. The 20 kHz row actively proves this receiver
+  # CANNOT discriminate carrier: at ~2 in it decoded a carrier 18 kHz off
+  # target 2/3 of the time. So a DEGRADED carrier -- a weak 38 kHz component
+  # riding on a large DC pedestal -- would still decode here, still look bright
+  # on a camera, and still starve the fan at distance.
+  # *** THE DEGRADED-EMITTER-DRIVE HYPOTHESIS REMAINS LIVE. Do not read the
+  # *** 0 Hz row as clearing the emitter; it does not.
+  # Pinning exact carrier frequency or modulation depth needs a scope or a
+  # photodiode, not this board.
   - platform: template
     name: "PROBE carrier 0Hz (no modulation)"
     on_press:
       - remote_transmitter.transmit_raw:
           carrier_frequency: 0
-          code: [1280, -420, 1230, -420, 430, -1270, 1230, -420, 1230, -420, 380, -1270, 380, -1270, 430, -1220, 430, -1270, 380, -1270, 380, -1270, 1230, -7120, 1230, -420, 1230, -420, 430, -1270, 1230, -420, 1230, -420, 380, -1270, 380, -1270, 430, -1220, 430, -1270, 380, -1270, 380, -1270, 1230]
+          code: *fan_raw
 
   - platform: template
     name: "PROBE carrier 20kHz (far out of band)"
     on_press:
       - remote_transmitter.transmit_raw:
           carrier_frequency: 20000
-          code: [1280, -420, 1230, -420, 430, -1270, 1230, -420, 1230, -420, 380, -1270, 380, -1270, 430, -1220, 430, -1270, 380, -1270, 380, -1270, 1230, -7120, 1230, -420, 1230, -420, 430, -1270, 1230, -420, 1230, -420, 380, -1270, 380, -1270, 430, -1220, 430, -1270, 380, -1270, 380, -1270, 1230]
+          code: *fan_raw

@@ -51,11 +51,13 @@ unticked items genuinely haven't been exercised yet.
       the capture with no second press. The board also heard its own replay and decoded it
       as the same `Symphony data=0xD81, nbits=12` — so the retransmission is faithful, not
       merely plausible.)*
+      **⚠️ REGRESSED 2026-08-17 ~23:48 local — the fan has not responded to the blaster since, and is under diagnosis as `ir-sniffer-blaster-54y`.** The pass above remains true for its date; it is NOT current status.
 
 ## Transmit (blast)
 
 - [x] Transmitter: a captured code, fired from a button, actuates the real device.
       (The `Fan Power` button toggled the fan, over the network via REST.)
+      **⚠️ REGRESSED 2026-08-17 ~23:48 local — the fan has not responded to the blaster since, and is under diagnosis as `ir-sniffer-blaster-54y`.** The pass above remains true for its date; it is NOT current status.
       **⚠️ WHICH REST is unrecorded, and it matters (R12).** This device exposes two:
       ESPHome's own `web_server` on port 80, and Home Assistant's API. If it was the
       former — the likelier reading, since `web_server` is configured and needs no
