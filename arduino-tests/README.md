@@ -152,7 +152,9 @@ to watch serial without re-triggering — though it still resets once on open.
 - **Upload fails / port busy?** Close the Serial Monitor, then Upload. Only one thing
   can own the port at a time — this also applies to `esphome logs`.
 - **Don't set `inverted`/pull-ups on the RX pin.** The 5990's output is already
-  buffered and demodulated (same reason the ESPHome config uses `inverted: false`).
+  buffered and demodulated. **Note this differs from the ESPHome config, which needs
+  `inverted: true`** — measured 2026-08-09 (R1); an earlier revision of this line
+  cited `inverted: false` and was wrong.
 - **A phone camera** sees the 940 nm LED flash faint purple when the emitter fires
   (Stage 3) — a quick smoke test.
 

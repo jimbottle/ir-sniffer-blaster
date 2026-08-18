@@ -9,7 +9,7 @@ Suggested format — one entry per remote button:
 
 | Button | Protocol | Notes |
 |--------|----------|-------|
-| fan-power-switch | **Symphony** `data=0xD81`, `nbits=12` | **Re-identified 2026-08-09 (R1).** Was recorded as "raw (UNKNOWN)" — that was an artefact of inverted RX polarity, not the remote. With `inverted: true` ESPHome decodes it cleanly. 28 identical captures → stable (not rolling). Verified toggling the fan on real hardware. |
+| fan-power-switch | **Symphony** `data=0xD81`, `nbits=12` | **Re-identified 2026-08-09 (R1).** Was recorded as "raw (UNKNOWN)" — that was an artefact of inverted RX polarity, not the remote. With `inverted: true` ESPHome decodes it cleanly. 28 identical captures → stable (not rolling). Verified toggling the fan on real hardware **2026-08-09; the fan has not responded since 2026-08-17 ~23:48 (`ir-sniffer-blaster-54y`). Code content is ELIMINATED by measurement — the emitted signal is bit-identical to the real remote — so do NOT re-capture on that hypothesis.** |
 
 ### ⚠️ It is NOT an unknown protocol — that was a polarity artefact
 

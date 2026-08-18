@@ -25,9 +25,12 @@ section of `docs/naming.md`), reachable at `http://ir-blaster-livingroom.local/`
 `Fan Power` button, pressed over the network (REST/web server), fires a captured raw
 code that toggles the fan — **but see the regression banner above: this has not held
 since 2026-08-17 (`ir-sniffer-blaster-54y`).** **Receiver:** the RX hardware/wiring is proven via the
-Arduino diagnostics, but the ESPHome `remote_receiver` dump hasn't been watched yet
-(different code path). Not yet exercised: OTA (both flashes were USB), the HA
-integration (adoption in progress), and the `send_raw_ir` service. Compiling / flashing
+Arduino diagnostics, **and the ESPHome `remote_receiver` dump is confirmed too** —
+PASS 2026-08-09 (R1): a 120-entry raw array plus a clean `Symphony data=0xD81,
+nbits=12` decode, **which requires `inverted: true`** (see below). Also since
+confirmed: **HA adoption** (the integration's own `core.config_entries` record) and
+**OTA** (twice on 2026-08-09, again on 2026-08-18 to deliver the 54y probe
+firmware). Still unexercised: only the `send_raw_ir` service. Compiling / flashing
 / testing the board is expected — it's a live build, not prep mode.
 
 ## The device is in the BEDROOM; the identifiers say living room
@@ -73,11 +76,20 @@ this repo, including the automation that the Bangle.js watch button fires.
   Not S2/S3. (The brief's `featheresp32-v2` is outdated and fails validation on
   current ESPHome.) Arduino-cli FQBN equivalent: `esp32:esp32:adafruit_feather_esp32_v2`.
 - **RX = GPIO14**, **TX = GPIO27**. These must match `docs/wiring.md`.
-- **`remote_receiver.inverted: false`** is correct for the 5990's buffered output.
-  Setting `true` is only for a bare TSOP38238 and will break decoding.
+- **`remote_receiver.inverted: true`** is correct on this hardware, and it is what
+  the shipped `ir-blaster-livingroom.yaml` carries. **Do not set it to `false`.**
+  This entry previously asserted the opposite; that was asserted at bring-up and
+  **disproved by measurement on 2026-08-09 (R1)** — `false` returned every timing
+  sign-flipped, 0/24 matching the known-good array with no decode and no actuation,
+  while `true` matched 24/24 and decoded on the first press
+  (`docs/validation.md`, `docs/troubleshooting.md`). The 5990's IRin idles HIGH and
+  pulls LOW during a carrier burst, so `false` records idle as mark. Reverting this
+  breaks the receiver — which is the instrument every `ir-sniffer-blaster-54y`
+  measurement depends on.
 - The included PSU (4298) is **power-only**; the first flash needs a separate USB-C
-  **data** cable. Subsequent flashes are *intended* to go OTA (not yet exercised —
-  both flashes so far were USB).
+  **data** cable. Subsequent flashes go **OTA — exercised and working**: twice on
+  2026-08-09 (27.48 s, 11.17 s) and again on 2026-08-18 for the 54y probe firmware.
+  Bootloader rollback is supported, so a failed OTA leaves the running image intact.
 - The 5990 is **not I2C** — ignore the cable's "STEMMA" label; wire to GPIOs.
 - **`secrets.yaml` is git-ignored and must never be committed.** Template:
   `secrets.yaml.example`; generate the API key with `openssl rand -base64 32`.
@@ -86,7 +98,9 @@ Bring-up ran against [`docs/validation.md`](docs/validation.md): the **transmit 
 proven** (captured code → `Fan Power` button → fan toggles, over the network) **as of
 bring-up — but see the regression banner under "Current state": the fan has not responded
 since 2026-08-17 (`ir-sniffer-blaster-54y`)**, while the
-**ESPHome receiver dump, HA adoption, OTA, and `send_raw_ir` remain unconfirmed**.
+the **ESPHome receiver dump, HA adoption and OTA have all since been confirmed**
+(R1, 2026-08-09; OTA again 2026-08-18), leaving **`send_raw_ir` as the only
+genuinely unconfirmed item**.
 Captured codes live in [`captured-codes/`](captured-codes/) — add new ones there as you
 capture them.
 

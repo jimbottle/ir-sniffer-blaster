@@ -68,8 +68,11 @@ classic dual-core ESP32, variant `esp32`):
   **green = IRout** = drive to fire the LEDs (**transmit** → GPIO27);
   **white = IRin** = demodulated signal from the receiver (**receive** → GPIO14).
   The names are the reverse of what they sound like — don't swap them.
-- Output is **buffered/demodulated** → the ESPHome receiver uses `inverted: false`
-  (see [troubleshooting](troubleshooting.md)).
+- Output is **buffered/demodulated**, but the ESPHome receiver still needs
+  **`inverted: true`** — the IRin line idles HIGH and pulls LOW during a carrier
+  burst, so `false` records idle as mark. Measured 2026-08-09 (R1): `false` gave
+  0/24 matching entries and no decode; `true` gave 24/24 and decoded first press.
+  This bullet previously said `false` (see [troubleshooting](troubleshooting.md)).
 - Has **one vertical and one horizontal emitter LED** — reorient the board if range
   to a specific device is marginal, rather than adding a second blaster.
 - **Single VIN powers both the receiver and the LEDs, and VIN is the output logic
