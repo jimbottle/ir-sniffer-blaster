@@ -1,0 +1,1 @@
+{"id":"int-1438904c","kind":"field_change","created_at":"2026-08-31T00:17:53.379553Z","actor":"jimbottle","issue_id":"ir-sniffer-blaster-54y","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"Resolved per owner (2026-08-30): the fan responds to the blaster again. Root cause / which runbook step fixed it not recorded at close time."}}
