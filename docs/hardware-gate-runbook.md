@@ -182,8 +182,9 @@ press — plus a `ResolveTimeoutAPIError` and an `EncryptionHelloAPIError`. The 
 dropped **after** the press, and the recovery was explicitly not long enough to call it
 settled.
 
-The board is pinned at a **bare IP, `192.168.0.6`, with no DHCP reservation**
-(`CHANGELOG.md:1446`, `:1468`). R1 does not depend on the HA link at all — it runs
+The board runs with **no DHCP reservation** (`CHANGELOG.md:1446`, `:1468`), and the
+address those lines record has since changed — `192.168.0.6` through 2026-08-09,
+measured at `192.168.0.3` on 2026-09-01. Reach it by mDNS, not by the literal IP. R1 does not depend on the HA link at all — it runs
 entirely on-device — but the flash and the log stream do go over the network, so an
 unexplained OTA failure or a log stream that dies mid-test is more likely this than a
 fault in the test.

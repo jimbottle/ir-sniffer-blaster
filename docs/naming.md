@@ -32,8 +32,11 @@ Each of these has a consumer outside this repo:
 - **`name:` also determines the mDNS hostname.** mDNS resolution is broken *from the
   HA Pi specifically* (`home-assistant-pi-6sf`; elsewhere on the LAN it works —
   measured resolving to `192.168.0.6` on 2026-08-09, `docs/hardware-gate-runbook.md`),
-  so the ESPHome integration pins a bare IP — `host: 192.168.0.6`. A rename would not
-  fix that and would add churn to it
+  so the ESPHome integration pins a bare IP rather than the name. **That pin tracks the
+  device rather than going stale:** the address moved to `192.168.0.3` by 2026-09-01 and
+  the config entry read `host: 192.168.0.3` the same day, so HA had followed it — the
+  mechanism was not observed, but zeroconf re-discovery is the obvious candidate. A
+  rename would not fix the mDNS-from-the-Pi problem and would add churn to it
 
 **Location belongs in Home Assistant's registry, not in firmware.** That is where it was
 changed, and that is the right place for it.

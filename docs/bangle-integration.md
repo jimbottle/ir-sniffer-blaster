@@ -165,7 +165,9 @@ entities button.ir_blaster_living_room_fan_power are missing or not currently av
 failures at 21:38:44–21:39:48Z on 2026-08-04 — minutes *after* the successful press —
 plus a `ResolveTimeoutAPIError` and an `EncryptionHelloAPIError`. The device dropped
 **after** the press, and that entry explicitly declines to call it settled. The board is
-pinned at a **bare IP, `192.168.0.6`, with no DHCP reservation** (`:1446`, `:1468`).
+running with **no DHCP reservation** (`:1446`, `:1468`), on a bare-IP pin whose value
+has since changed — `192.168.0.6` through 2026-08-09, and `host: 192.168.0.3` as read
+from `core.config_entries` on 2026-09-01, matching where the device actually was.
 
 Two consequences for this plan. **A fire can fail at HA's entity-availability check and
 never reach the API at all** — a third outcome distinct from "the device received it and
