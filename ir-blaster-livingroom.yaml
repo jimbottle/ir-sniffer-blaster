@@ -161,57 +161,75 @@ button:
 
   # ── FAN SPEED, captured 2026-09-02 (ir-sniffer-blaster-dud) ─────────────────
   # Same remote, same Symphony protocol, same session as a fresh Fan Power
-  # capture that reproduced 0xD81 exactly:
-  #   speed up   -> Symphony data=0xD92 nbits=12   (5/5 presses identical)
-  #   speed down -> Symphony data=0xD82 nbits=12   (5/5 presses identical)
-  # Not rolling. The remote has DISCRETE up and down buttons, not one cycling
-  # speed button -- which is what the watch's two-cell layout assumes.
+  # capture that reproduced 0xD81 exactly. Neither code rolls: 5/5 presses each.
+  # The remote has DISCRETE up and down, not one cycling speed button -- the two
+  # codes differ, which a single cycling button could not produce.
+  #
+  # *** THE DIRECTION OF EACH CODE IS FROM WATCHING THE FAN, NOT FROM THE
+  # *** REMOTE BUTTON THAT PRODUCED IT, AND THE TWO DISAGREED. ***
+  # At capture time the owner pressed "increase" first, which produced 0xD92,
+  # and "decrease" second, which produced 0xD82. Firing them back on 2026-09-02
+  # did the OPPOSITE: 0xD92 x3 stepped the fan DOWN and 0xD82 x3 stepped it UP,
+  # observed on the physical fan. The actuation is the evidence; a report of
+  # which button was pressed is not. Do NOT "correct" this back to match the
+  # capture note -- that mapping is the one that was measured wrong.
+  # CONFIRMED 2026-09-02 by re-test after this rename, fan running and watched:
+  # 3x "Fan Speed Down" gave 2 observable decreases (the 3rd hit the floor and
+  # did nothing), then 3x "Fan Speed Up" gave 3 increases ending at maximum.
+  # BOTH ENDS CLAMP -- neither code wraps around. That matters for the watch:
+  # SPEED + at maximum does nothing, rather than dumping the fan to minimum.
+  # INFERRED, not measured: ~4 speed levels, and the fan was at level 3 when the
+  # test began. That is the arithmetic those two counts imply; nobody has read a
+  # speed indicator, so do not treat the level count as established.
+  #
+  # THE ANCHORS ARE NAMED BY CODE, NOT BY DIRECTION, deliberately. An anchor
+  # called &fan_up_raw is a second place for the direction to be recorded, and
+  # therefore a second place for it to be wrong; &sym_d92_raw cannot lie.
   #
   # PRODUCTION USES RAW, deliberately, even though the decoded form is 3 fields.
-  # `transmit_symphony` has NEVER been shown to actuate this fan: the "Fan Power
+  # transmit_symphony has never been shown to actuate this fan: the "Fan Power
   # (Symphony probe)" button below has sat unpressed since 2026-08-09 and
-  # docs/hardware-gate-runbook.md still lists that probe as open. Raw is the only
-  # TX form with a physical result behind it, so the working buttons ship in it
-  # and the decoded form stays a probe until someone watches the fan move.
+  # docs/hardware-gate-runbook.md still lists that probe as open. Raw is the
+  # only TX form with a physical result behind it -- and as of 2026-09-02 these
+  # two buttons are part of that result.
   #
   # The arrays were DERIVED from the Pronto dump in the same capture, not
-  # hand-timed, and the conversion was validated before it was trusted: run
-  # against the Fan Power capture from that session it reproduced the stored
-  # `&fan_raw` array on 46/47 entries within 80us, the only outlier being the
-  # inter-frame gap (-7205 vs -7120, 1.2% on a 7ms pause). Each array below also
-  # decodes by mark/space ratio back to the exact Symphony value the receiver
-  # reported, so two independent decoders agree on them.
-  # Two frames each, matching `&fan_raw` and the remote's own command_repeats: 2.
+  # hand-timed, and validated before being trusted: run against that session's
+  # Fan Power capture the conversion reproduced the stored `&fan_raw` array on
+  # 46/47 entries within 80us, the only outlier being the inter-frame gap
+  # (-7205 vs -7120, 1.2% on a 7ms pause). Each array also decodes by
+  # mark/space ratio back to the exact Symphony value the receiver reported.
+  # Two frames each, matching `&fan_raw` and the remote's command_repeats: 2.
   - platform: template
-    name: "Fan Speed Up"
+    name: "Fan Speed Up"              # Symphony 0xD82 -- MEASURED to raise speed
     on_press:
       - remote_transmitter.transmit_raw:
           carrier_frequency: 38kHz
-          code: &fan_up_raw [1288, -447, 1236, -447, 394, -1288, 1236, -447, 1236, -447, 394, -1288, 394, -1288, 1236, -447, 394, -1288, 394, -1288, 1236, -447, 394, -8047, 1236, -447, 1236, -447, 394, -1288, 1236, -447, 1236, -447, 394, -1288, 394, -1288, 1236, -447, 394, -1288, 394, -1288, 1236, -447, 394]
+          code: &sym_d82_raw [1288, -447, 1236, -447, 394, -1288, 1236, -447, 1236, -447, 394, -1288, 394, -1288, 394, -1288, 394, -1288, 394, -1288, 1236, -447, 394, -8047, 1236, -447, 1236, -447, 394, -1288, 1236, -447, 1236, -447, 394, -1288, 394, -1288, 394, -1288, 394, -1288, 394, -1288, 1236, -447, 394]
 
   - platform: template
-    name: "Fan Speed Down"
+    name: "Fan Speed Down"            # Symphony 0xD92 -- MEASURED to lower speed
     on_press:
       - remote_transmitter.transmit_raw:
           carrier_frequency: 38kHz
-          code: &fan_down_raw [1288, -447, 1236, -447, 394, -1288, 1236, -447, 1236, -447, 394, -1288, 394, -1288, 394, -1288, 394, -1288, 394, -1288, 1236, -447, 394, -8047, 1236, -447, 1236, -447, 394, -1288, 1236, -447, 1236, -447, 394, -1288, 394, -1288, 394, -1288, 394, -1288, 394, -1288, 1236, -447, 394]
+          code: &sym_d92_raw [1288, -447, 1236, -447, 394, -1288, 1236, -447, 1236, -447, 394, -1288, 394, -1288, 1236, -447, 394, -1288, 394, -1288, 1236, -447, 394, -8047, 1236, -447, 1236, -447, 394, -1288, 1236, -447, 1236, -447, 394, -1288, 394, -1288, 1236, -447, 394, -1288, 394, -1288, 1236, -447, 394]
 
-  # The decoded-form probes for the two new codes. Press these AFTER confirming
-  # the raw buttons above move the fan -- then a difference isolates the TX form
-  # rather than the code. Together with "Fan Power (Symphony probe)" they answer
-  # the open Symphony TX question on any of three codes.
+  # Decoded-form probes. Press these AFTER confirming the raw buttons above move
+  # the fan, so a difference isolates the TX form rather than the code. With
+  # "Fan Power (Symphony probe)" they answer the open Symphony TX question on
+  # any of three codes.
   - platform: template
     name: "Fan Speed Up (Symphony probe)"
     on_press:
       - remote_transmitter.transmit_symphony:
-          data: 0xD92
+          data: 0xD82
           nbits: 12
 
   - platform: template
     name: "Fan Speed Down (Symphony probe)"
     on_press:
       - remote_transmitter.transmit_symphony:
-          data: 0xD82
+          data: 0xD92
           nbits: 12
 
   # ── DIAGNOSTIC PROBES, added 2026-08-18 (ir-sniffer-blaster-54y) ─────────────
