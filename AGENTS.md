@@ -19,12 +19,11 @@ them over the Home Assistant API, MQTT, REST, or a built-in web server.
 > to end" as current status.
 
 **Built and working on real hardware.** Flashed to the ESP32-PICO-V3-02 Feather, on
-2.4GHz WiFi via DHCP (**no router reservation yet**, the ask is tracked in
-`home-assistant-pi-6sf`; see the "Known consequence" section of `docs/naming.md`),
-reachable at `http://ir-blaster-livingroom.local/`. **The address has actually moved:
-it held `192.168.0.6` through 2026-08-09 and was measured at `192.168.0.3` on
-2026-09-01.** Use the mDNS name, never a literal IP — that is the handle that survived
-the move. The **emitter** is validated end to end: the
+2.4GHz WiFi via DHCP, reachable at `http://ir-blaster-livingroom.local/`. **A router
+reservation now pins MAC `14:33:5C:98:DA:A4` to `192.168.0.3` (2026-09-02)**, closing
+the ask in `home-assistant-pi-6sf` — filed because the address really did drift, from
+`192.168.0.6` through 2026-08-09 to `192.168.0.3` by 2026-09-01. Still use the mDNS
+name in scripts: the reservation lives in router config this repo does not version. The **emitter** is validated end to end: the
 `Fan Power` button, pressed over the network (REST/web server), fires a captured raw
 code that toggles the fan — **but see the regression banner above: this has not held
 since 2026-08-17 (`ir-sniffer-blaster-54y`).** **Receiver:** the RX hardware/wiring is proven via the

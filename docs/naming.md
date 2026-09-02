@@ -35,8 +35,10 @@ Each of these has a consumer outside this repo:
   so the ESPHome integration pins a bare IP rather than the name. **That pin tracks the
   device rather than going stale:** the address moved to `192.168.0.3` by 2026-09-01 and
   the config entry read `host: 192.168.0.3` the same day, so HA had followed it — the
-  mechanism was not observed, but zeroconf re-discovery is the obvious candidate. A
-  rename would not fix the mDNS-from-the-Pi problem and would add churn to it
+  mechanism was not observed, but zeroconf re-discovery is the obvious candidate. As of
+  **2026-09-02 a router reservation pins that address**, so the pin and the device agree
+  by construction now rather than by re-discovery. A rename would not fix the
+  mDNS-from-the-Pi problem and would add churn to it
 
 **Location belongs in Home Assistant's registry, not in firmware.** That is where it was
 changed, and that is the right place for it.
@@ -55,5 +57,7 @@ change, including this table's left-hand column. Add a dated line below instead.
 Pings to the blaster from the LAN run **~90–116 ms**, against under ~10 ms for a healthy
 ESPHome node — the bedroom position looks marginal for Wi-Fi. **If the device flaps,
 reposition it before debugging protocol.** It also dropped off the network entirely during
-the move and re-took `192.168.0.6` by lease reuse rather than by reservation, so the
-reservation ask in `home-assistant-pi-6sf` still stands.
+the move and re-took `192.168.0.6` by lease reuse rather than by reservation. **That ask
+is now DONE: `home-assistant-pi-6sf` was satisfied 2026-09-02** with a router
+reservation binding MAC `14:33:5C:98:DA:A4` to `192.168.0.3`. It was not idle worry —
+the address drifted off `192.168.0.6` before the reservation landed.
