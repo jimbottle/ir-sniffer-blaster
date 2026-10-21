@@ -1,7 +1,7 @@
 # Hardware
 
-All hardware is **already purchased**. This page is reference for assembly and for
-anyone considering substitutions.
+This is the exact parts list the build was made and tested with. The page is reference
+for assembly and for anyone considering substitutions.
 
 ## Bill of materials (as purchased, all Adafruit)
 
@@ -17,8 +17,8 @@ anyone considering substitutions.
 
 - **A USB-C DATA cable** (PC → Feather). The 4298 PSU is power-only and **cannot
   flash** the board. After the initial flash, updates can go over WiFi (OTA) with the
-  4298 just powering it — though OTA hasn't been exercised on this board yet (both
-  flashes so far were over USB).
+  4298 just powering it (OTA is proven on this board; see
+  [`validation.md`](validation.md)).
 
 ## Why these parts (context for substitutions)
 

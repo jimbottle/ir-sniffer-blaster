@@ -48,9 +48,9 @@ esphome run ir-blaster-livingroom.yaml
 
 OTA is gated by `ota_password` from `secrets.yaml`.
 
-> **Not yet exercised on this board.** Both flashes so far were over USB; the OTA path
-> (`ota:` block) is configured but hasn't been run. **Keep the USB data cable handy
-> until one network `esphome run` succeeds** — if OTA fails, USB is your fallback.
+> **Proven on this board** (2026-08-09, two successful OTA flashes). On a new build,
+> **keep the USB data cable handy until one network `esphome run` succeeds** — if OTA
+> fails, USB is your fallback.
 
 ## Docker alternative
 

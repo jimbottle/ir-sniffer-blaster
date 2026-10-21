@@ -31,7 +31,7 @@ logger:
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
-  # Using DHCP; the address is reserved on the router. Reachable via mDNS at
+  # Using DHCP (reserve the address on your router). Reachable via mDNS at
   # ir-blaster-livingroom.local. To pin a static IP in firmware instead, uncomment
   # and set to your LAN:
   # manual_ip:
