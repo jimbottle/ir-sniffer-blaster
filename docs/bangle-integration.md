@@ -463,7 +463,7 @@ they want to be batched into one sitting. Answers feed directly into Phase 2 siz
       single automation, distinguished by `trigger.id`, which means a separate bearer
       credential and a separate Access destination for every code. It does not scale, so
       treat a negative result here as a serious finding rather than a detail.
-- [ ] **R5 — Is HTTPS reachable?** Specifically `https://ha.raylytics.io`. Determines
+- [ ] **R5 — Is HTTPS reachable?** Specifically `https://<your-home-assistant-host>`. Determines
       whether the external path depends on a Cloudflare Access bypass.
 - [ ] **R6 — Does mDNS resolve from the phone?** Could the watch hit
       `http://ir-blaster-livingroom.local/` directly? Would cut HA out of the read path.
