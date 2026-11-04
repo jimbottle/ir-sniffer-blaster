@@ -29,3 +29,15 @@ __pycache__/
 
 # Beads issue tracker (local-only; not published)
 .beads/
+
+# Raylytics VC Standard
+.env
+.env.*
+!.env.example
+*.log
+.claude/settings.local.json
+QUEUE.md
+HANDOFF*
+dist/
+.ruff_cache/
+.pytest_cache/

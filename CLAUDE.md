@@ -129,3 +129,14 @@ convention looks broken, or the workflow rubs wrong, file a bd issue (with
 an owner) and fix or hand it off — don't route around it silently.
 Friction with wyk is product data; surfacing it is the job.
 <!-- END WYK CONVENTIONS -->
+
+## Version control
+
+This repo follows the Raylytics Version Control Standard, tier 1, stack python. Source: STANDARD.md in the `raylytics` repo (2026-10-27); cite its section in a commit body when a rule decides something.
+
+- Branch from `main` as `type/short-kebab`. Every change lands as a squash-merged PR with CI green; the PR title is the Conventional Commit subject. Agent work always goes through a PR.
+- Commits follow Conventional Commits 1.0: `type(scope): subject`, subject at most 72 characters, imperative, no trailing period, then a body that says why. Types: feat, fix, perf, refactor, style, docs, test, build, ci, chore, revert. Scopes here: firmware, wiring, learn, arduino, ha, docs, ci, deps, vc.
+- Never add `Co-Authored-By`, `Generated with`, or any AI byline; the commit-msg hook refuses them. Never use `--no-verify`. Never force-push `main`.
+- Secrets never enter the tree; `.env.example` lists the variables; gitleaks runs in pre-commit and CI.
+- Commands: `pre-commit install --hook-type pre-commit --hook-type commit-msg` once; lint `uvx ruff check learn && uvx ruff format --check learn`; test `esphome config <each .yaml>` (needs `secrets.yaml`) and `python3 learn/test_verify.py`; no releases: firmware is flashed from `main` (§7 treats this like infra: no version file, tags optional).
+- Do not commit `.claude/settings.local.json`, `QUEUE.md`, `HANDOFF*`, `.beads/`, scratch notes or session logs.
