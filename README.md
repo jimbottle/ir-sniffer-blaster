@@ -1,5 +1,8 @@
 # IR Sniffer / Blaster
 
+[![ci](https://github.com/jimbottle/ir-sniffer-blaster/actions/workflows/ci.yml/badge.svg)](https://github.com/jimbottle/ir-sniffer-blaster/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A networked **infrared sniffer and blaster for a single room**, built on an
 **Adafruit ESP32 Feather V2 running [ESPHome](https://esphome.io/)**. It captures
 ("sniffs") the signals from ordinary IR remotes, and replays them on demand from
