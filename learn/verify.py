@@ -38,8 +38,9 @@ from dataclasses import dataclass
 
 TIMEOUT_S = 120
 BANNER = "Continuity Tester"
-USAGE = ("usage: verify.py [PORT]\n"
-         "  auto-detects /dev/cu.usbserial-* or /dev/cu.usbmodem* if omitted")
+USAGE = (
+    "usage: verify.py [PORT]\n  auto-detects /dev/cu.usbserial-* or /dev/cu.usbmodem* if omitted"
+)
 
 # The Unicode replacement char: a decode failure on a known-ASCII sketch line.
 # (Why it's only counted on recognised lines is in the feed() docstring.)
@@ -48,13 +49,13 @@ MOJIBAKE = "�"
 
 @dataclass
 class State:
-    alive: bool = False           # have we seen ANY line we recognise?
+    alive: bool = False  # have we seen ANY line we recognise?
     banner_seen: bool = False
     skip_boot_line: bool = False  # setup() prints one status line; not a probe event
     made: int = 0
     broke: int = 0
-    reboots: int = 0              # unexpected: a reset AFTER the sketch was streaming
-    raw_resets: int = 0          # every rst:0x seen, even before the sketch ever ran
+    reboots: int = 0  # unexpected: a reset AFTER the sketch was streaming
+    raw_resets: int = 0  # every rst:0x seen, even before the sketch ever ran
     mojibake: int = 0
     counter_hi: int = 0
 
@@ -105,10 +106,10 @@ def feed(st: State, line: str) -> str | None:
     is_made = line.startswith("CONTINUITY")
     is_broke = line.startswith("open")
     if not (is_made or is_broke):
-        return None    # not trusted sketch output -> ignore entirely (incl. its bytes)
+        return None  # not trusted sketch output -> ignore entirely (incl. its bytes)
 
     st.alive = True
-    st.mojibake += line.count(MOJIBAKE)   # known-ASCII line -> any junk here is real
+    st.mojibake += line.count(MOJIBAKE)  # known-ASCII line -> any junk here is real
 
     m = re.search(r"contacts=(\d+)", line)
     if m:
@@ -198,8 +199,10 @@ def main() -> None:
     if st.ok:
         print("\n  PASS - the pin-to-pin trigger works and prints correctly.")
         if st.reboots:
-            print(f"  (note: {st.reboots} unexpected reboot(s) - worth a look, but the "
-                  f"trigger worked)")
+            print(
+                f"  (note: {st.reboots} unexpected reboot(s) - worth a look, but the "
+                f"trigger worked)"
+            )
     else:
         print("\n  FAIL")
         if not st.alive:

@@ -26,7 +26,7 @@ BOOT_DUMP = [
     "rst:0x1 (POWERON_RESET),boot:0x13 (SPI_FAST_FLASH_BOOT)",
     "configsip: 271414342, SPIWP:0xee",
     "clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00",
-    "�� � ��  � 0",     # binary junk in the ROM dump
+    "�� � ��  � 0",  # binary junk in the ROM dump
     "entry 0x4008059c",
 ]
 
@@ -44,7 +44,7 @@ BANNER_BLOCK = [
 # the boot dump" gate missed this; the current "only trust recognised lines" rule
 # ignores it by construction.
 GARBLED_BOOT = [
-    "�ts Jul 29 2019 12:21:46",   # 'ets...' with a mangled first byte
+    "�ts Jul 29 2019 12:21:46",  # 'ets...' with a mangled first byte
     "�� rst:0x1 boot noise",
     "configsip: 271414342",
     "entry 0x4008059c",
@@ -75,26 +75,39 @@ def main() -> None:
     st = run(BOOT_DUMP + BANNER_BLOCK + [BOOT_STATE, MADE_1, BROKE_1])
     results += [
         check("PASSes", st.ok),
-        check("pre-banner ROM junk not counted as mojibake", st.mojibake == 0,
-              f"(got {st.mojibake})"),
-        check("open-time reset not counted as a reboot", st.reboots == 0,
-              f"(got {st.reboots})"),
-        check("boot status line not counted as a probe event",
-              st.made == 1 and st.broke == 1, f"(made={st.made} broke={st.broke})"),
+        check(
+            "pre-banner ROM junk not counted as mojibake", st.mojibake == 0, f"(got {st.mojibake})"
+        ),
+        check("open-time reset not counted as a reboot", st.reboots == 0, f"(got {st.reboots})"),
+        check(
+            "boot status line not counted as a probe event",
+            st.made == 1 and st.broke == 1,
+            f"(made={st.made} broke={st.broke})",
+        ),
     ]
 
     # 2. A mid-run reboot. This is the fault the tool exists to catch: it must be
     #    REPORTED, must not corrupt the event counts, and must not be misdiagnosed
     #    as a baud problem via the post-reboot ROM dump's junk bytes.
     print("\nmid-run reboot (the fault this tool exists to catch):")
-    st = run(BOOT_DUMP + BANNER_BLOCK + [BOOT_STATE, MADE_1, BROKE_1]
-             + BOOT_DUMP + BANNER_BLOCK + [BOOT_STATE])
+    st = run(
+        BOOT_DUMP
+        + BANNER_BLOCK
+        + [BOOT_STATE, MADE_1, BROKE_1]
+        + BOOT_DUMP
+        + BANNER_BLOCK
+        + [BOOT_STATE]
+    )
     results += [
         check("the reboot IS counted", st.reboots == 1, f"(got {st.reboots})"),
-        check("post-reboot ROM junk NOT counted as mojibake", st.mojibake == 0,
-              f"(got {st.mojibake})"),
-        check("post-reboot boot line not counted as an event",
-              st.made == 1 and st.broke == 1, f"(made={st.made} broke={st.broke})"),
+        check(
+            "post-reboot ROM junk NOT counted as mojibake", st.mojibake == 0, f"(got {st.mojibake})"
+        ),
+        check(
+            "post-reboot boot line not counted as an event",
+            st.made == 1 and st.broke == 1,
+            f"(made={st.made} broke={st.broke})",
+        ),
         check("still PASSes (trigger worked; reboot is a note, not a failure)", st.ok),
     ]
 
@@ -113,14 +126,20 @@ def main() -> None:
     st = run([MADE_1, BROKE_1])
     results += [
         check("recognised as alive without a banner", st.alive),
-        check("first event NOT swallowed as a boot line",
-              st.made == 1 and st.broke == 1, f"(made={st.made} broke={st.broke})"),
+        check(
+            "first event NOT swallowed as a boot line",
+            st.made == 1 and st.broke == 1,
+            f"(made={st.made} broke={st.broke})",
+        ),
         check("PASSes", st.ok),
     ]
     st = run([MADE_1, BROKE_1] + BOOT_DUMP + BANNER_BLOCK + [BOOT_STATE])
     results += [
-        check("first genuine reboot counted even with no banner beforehand",
-              st.reboots == 1, f"(got {st.reboots})"),
+        check(
+            "first genuine reboot counted even with no banner beforehand",
+            st.reboots == 1,
+            f"(got {st.reboots})",
+        ),
     ]
 
     # 5. Real corruption AFTER sync is genuine bit-corruption and must be caught.
@@ -134,11 +153,13 @@ def main() -> None:
     # 6. A reboot whose ROM dump is garbled from the first byte. The junk must NOT
     #    be counted as mojibake - this is the exact ordering the previous gate missed.
     print("\nmid-run reboot with a garbled boot dump:")
-    st = run(BANNER_BLOCK + [BOOT_STATE, MADE_1, BROKE_1]
-             + GARBLED_BOOT + BANNER_BLOCK + [BOOT_STATE])
+    st = run(
+        BANNER_BLOCK + [BOOT_STATE, MADE_1, BROKE_1] + GARBLED_BOOT + BANNER_BLOCK + [BOOT_STATE]
+    )
     results += [
-        check("garbled boot junk NOT counted as mojibake", st.mojibake == 0,
-              f"(got {st.mojibake})"),
+        check(
+            "garbled boot junk NOT counted as mojibake", st.mojibake == 0, f"(got {st.mojibake})"
+        ),
         check("the reboot is still counted", st.reboots == 1, f"(got {st.reboots})"),
         check("still PASSes", st.ok),
     ]
@@ -146,16 +167,28 @@ def main() -> None:
     # 7. A power-on boot loop: resets forever, never reaches the sketch. The tool
     #    must surface it (raw_resets) rather than blame the baud or the wiring.
     print("\npower-on boot loop (never reaches the sketch):")
-    st = run(["rst:0x1 (POWERON_RESET)", "boot noise",
-              "rst:0xc (SW_CPU_RESET)", "more noise",
-              "rst:0x1 (POWERON_RESET)"])
+    st = run(
+        [
+            "rst:0x1 (POWERON_RESET)",
+            "boot noise",
+            "rst:0xc (SW_CPU_RESET)",
+            "more noise",
+            "rst:0x1 (POWERON_RESET)",
+        ]
+    )
     results += [
         check("FAILs", not st.ok),
         check("not reported as alive", not st.alive),
-        check("raw resets counted (>=2) so the verdict can name a boot loop",
-              st.raw_resets >= 2, f"(got {st.raw_resets})"),
-        check("not miscounted as unexpected mid-stream reboots", st.reboots == 0,
-              f"(got {st.reboots})"),
+        check(
+            "raw resets counted (>=2) so the verdict can name a boot loop",
+            st.raw_resets >= 2,
+            f"(got {st.raw_resets})",
+        ),
+        check(
+            "not miscounted as unexpected mid-stream reboots",
+            st.reboots == 0,
+            f"(got {st.reboots})",
+        ),
     ]
 
     print(f"\n{sum(results)}/{len(results)} checks passed")

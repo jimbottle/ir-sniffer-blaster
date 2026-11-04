@@ -131,6 +131,16 @@ same buttons. The capture → replay workflow is in
 
 See [`docs/troubleshooting.md`](docs/troubleshooting.md) for the full list.
 
+## Development
+
+```bash
+pre-commit install --hook-type pre-commit --hook-type commit-msg   # once per clone
+esphome config ir-blaster-livingroom.yaml ir-wiring-test.yaml ir-roundtrip-test.yaml   # what CI validates
+python3 learn/test_verify.py                                        # the serial-parser test
+```
+
+CI validates every ESPHome config with the pinned `esphome` and runs the parser test; there is no release flow, the firmware is flashed from `main`. Commits follow Conventional Commits and land through squash-merged PRs; the `Version control` section of [CLAUDE.md](CLAUDE.md) is the short form.
+
 ## License
 
 [MIT](LICENSE) © 2026 Evan J Ray

@@ -49,8 +49,9 @@ except ImportError:
     sys.exit("pyserial not installed.  Run:  pip install pyserial")
 
 BAUD = 115200
-USAGE = ("usage: monitor.py [PORT]\n"
-         "  auto-detects /dev/cu.usbserial-* or /dev/cu.usbmodem* if omitted")
+USAGE = (
+    "usage: monitor.py [PORT]\n  auto-detects /dev/cu.usbserial-* or /dev/cu.usbmodem* if omitted"
+)
 
 
 def find_port(usage: str = USAGE, doc: str | None = None) -> str:
@@ -101,8 +102,7 @@ def main() -> None:
         ser.open()
     except Exception as exc:  # noqa: BLE001
         sys.exit(
-            f"Could not open {port}: {exc}\n"
-            "If it's busy, close the Arduino IDE Serial Monitor."
+            f"Could not open {port}: {exc}\nIf it's busy, close the Arduino IDE Serial Monitor."
         )
 
     print(f"--- {port} @ {BAUD}  (DTR/RTS held low — no resets while probing)")

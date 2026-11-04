@@ -1,0 +1,7 @@
+# Lint and format settings for the Python under learn/ (Raylytics VC Standard §8).
+line-length = 100
+target-version = "py312"
+
+[lint]
+# The classic default set, named explicitly so a ruff upgrade cannot widen it.
+select = ["E4", "E7", "E9", "F"]

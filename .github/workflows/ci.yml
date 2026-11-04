@@ -1,0 +1,77 @@
+# ir-sniffer-blaster CI, on the Raylytics VC Standard template (templates/ci/python.yml,
+# STANDARD.md §8, §12), shaped for an ESPHome project: the pre-commit job runs the
+# hooks (ruff on learn/, gitleaks, whitespace), the test job validates every ESPHome
+# config with the pinned esphome and runs the serial-parser unit test. No build job:
+# `esphome compile` pulls the PlatformIO toolchain (minutes, hundreds of MB) and the
+# real proof is a flash on the board (docs/validation.md). Actions are pinned to
+# full commit SHAs (version in the trailing comment), resolved 2026-10-27.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: true
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+      - name: pre-commit
+        run: uvx pre-commit run --all-files --show-diff-on-failure
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: true
+      - name: Install the pinned toolchain (esphome, pyserial)
+        run: |
+          uv venv .venv
+          uv pip install -r requirements.txt
+      - name: Throwaway secrets for validation
+        # The example file's key is not base64, which `esphome config` checks; CI
+        # generates its own values and never sees the real secrets.yaml (gitignored).
+        run: |
+          cp secrets.yaml.example secrets.yaml
+          sed -i "s|^api_encryption_key:.*|api_encryption_key: $(openssl rand -base64 32)|" secrets.yaml
+          sed -i "s|^ota_password:.*|ota_password: ci-only-ota-password|; s|^ap_password:.*|ap_password: ci-only-ap-password|; s|^wifi_ssid:.*|wifi_ssid: ci|; s|^wifi_password:.*|wifi_password: ci-only-wifi-password|" secrets.yaml
+      - name: Validate every ESPHome config
+        run: |
+          for y in ir-blaster-livingroom.yaml ir-wiring-test.yaml ir-roundtrip-test.yaml; do
+            echo "== $y"; .venv/bin/esphome config "$y" > /dev/null
+          done
+      - name: Serial-parser unit test
+        run: python3 learn/test_verify.py
+
+  pr-title:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: PR title is a Conventional Commit subject
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(feat|fix|perf|refactor|style|docs|test|build|ci|chore|revert)(\([a-z0-9-]+\))?!?: .{1,60}$'
+          if printf '%s\n' "$TITLE" | grep -Eq "$pattern"; then
+            echo "ok: $TITLE"
+          else
+            echo "::error::PR title must match $pattern (it becomes the squash commit subject)"
+            exit 1
+          fi
