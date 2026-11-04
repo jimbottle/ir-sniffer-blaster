@@ -6,7 +6,7 @@
 # Bump deliberately — board keys and config syntax can change between releases
 # (e.g. the board key changed from `featheresp32-v2` to `adafruit_feather_esp32_v2`,
 # and `api: services:` became `api: actions:`).
-esphome==2026.6.2
+esphome==2026.10.1
 
 # Used directly by learn/monitor.py (a serial monitor that doesn't reset the ESP32).
 # ESPHome happens to pull this in too, but don't rely on that — declare it.
